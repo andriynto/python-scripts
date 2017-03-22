@@ -469,9 +469,9 @@ def getTableContents(table):
 		else:			
 			ATM = 0
 		#---------------------------------------
-		textAvail = tdcells[36].getText()
+		textAvail = tdcells[37].getText()
 		if (textAvail) != '':
-			AVAIL = float(tdcells[36].getText()) 
+			AVAIL = float(tdcells[37].getText()) 
 		else:			
 			AVAIL = 0
 		#---------------------------------------
