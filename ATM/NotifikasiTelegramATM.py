@@ -1177,7 +1177,7 @@ def getAvailBranch(branchCode):
 
 		arrTDs = mysoup.findAll('td')
 
-		percentAvail = arrTDs[36].getText()
+		percentAvail = arrTDs[37].getText()
 		
 
 	except IndexError:
