@@ -5,6 +5,7 @@
 # (c) Jansen A. Simanullang
 # 06.10.2015 - 08.03.2017 14:04
 # to be used with cron and MariaDB
+# @Medan City, Juni 2017
 #---------------------------------------
 # Python usage:
 # NotifikasiTelegramATM
@@ -22,7 +23,9 @@ from email.MIMEImage import MIMEImage
 
 ################################################################################################
 firstURL='http://172.18.65.42/statusatm/dashboard_3.pl?ERROR=CLOSE_ST'
-RegionName = "JAKARTA III"
+RegionName = "Medan"
+TelegramTextSizeLimit=4096
+lastEdit = "Juni 2017"
 ################################################################################################
 
 scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
@@ -57,14 +60,14 @@ asciiArt="""
         ▄█████████████▄ 
 █████  █████████████████  █████
 ▐████▌ ▀███▄       ▄███▀ ▐████▌
- █████▄  ▀███▄   ▄███▀  ▄█████    NOTIFIKASI ATM via TELEGRAM
+ █████▄  ▀███▄   ▄███▀  ▄█████    SISTEM NOTIFIKASI ATM melalui 
 """
 
-asciiArt = asciiArt +" ▐██▀███▄  ▀███▄███▀  ▄███▀██▌    "+RegionName
+asciiArt = asciiArt +" ▐██▀███▄  ▀███▄███▀  ▄███▀██▌    MEDIA ONLINE TELEGRAM "+RegionName
 asciiArt = asciiArt +"""
   ███▄▀███▄  ▀███▀  ▄███▀▄███     
   ▐█▄▀█▄▀███ ▄▀ ▀▄ ███▀▄█▀▄█▌     (c) JANSEN SIMANULLANG
-   ███▄▀█▄██ ██ ██ ██▄█▀▄███      MEI 2015 - JANUARI 2017
+   ███▄▀█▄██ ██ ██ ██▄█▀▄███      MEI 2015 - """+lastEdit.upper()+"""
     ▀███▄▀██ ██ ██ ██▀▄███▀
    █▄ ▀█████ █████ █████▀ ▄█        \__/  \__/  \__/  \__/  \__/  \__/
    ███        ███	 ███      __/  \__/  \__/  \__/  \__/  \__/  \_
@@ -1038,9 +1041,11 @@ def getATMProbStats(table):
 
 		msgBody = msgBody + "\n*CASH LOW*: "+str(numCLUKO) + "\n" + "\n".join(arrCLUKO) + "\n"
 
-	if numDFUKO:
+	# 22/06/2017
+	# tutup sementara karena CO DF terlalu banyak sehingga Notifikasi Error
+	#if numDFUKO:
 
-		msgBody = msgBody + "\n*DISPENSER FAILURE*: "+str(numDFUKO) + "\n" + "\n".join(arrDFUKO) + "\n"
+	#	msgBody = msgBody + "\n*DISPENSER FAILURE*: "+str(numDFUKO) + "\n" + "\n".join(arrDFUKO) + "\n"
 
 	if numOOSUKO:
 
@@ -1162,14 +1167,14 @@ def getPengelolaSupervisi(strTID):
 
 
 
-def getAvailBranch(branchCode):
+def getAvailUtilBranch(branchCode):
 
 	try:	
-		strURL = 'http://172.18.65.42/statusatm/dashboard_cabang.pl?REGID=15&REGNAME=Jakarta%20III'
+		strURL = 'http://172.18.65.42/statusatm/dashboard_cabang.pl?REGID=02&REGNAME=Medan'
 
 		strHTML = fetchHTML(strURL)
 
-		table = getLargestTable(getTableList(strHTML))
+		table = getWidestTable(getTableList(strHTML))
 
 		strHTMLTableRows = getSpecificRows(table, getRowIndex(table, branchCode))
 
@@ -1177,14 +1182,15 @@ def getAvailBranch(branchCode):
 
 		arrTDs = mysoup.findAll('td')
 
-		percentAvail = arrTDs[37].getText()
-		
+		percentReal = arrTDs[4].getText().strip()
+		percentAvail = arrTDs[5].getText().strip()
+		percentUtil = arrTDs[13].getText().strip()
 
 	except IndexError:
 	
-		percentAvail = getAvailBranch(branchCode)
+		percentReal, percentAvail, percentUtil = getAvailUtilBranch(branchCode)
 
-	return percentAvail
+	return float(percentReal), float(percentAvail), float(percentUtil)
 
 
 def colorPercent(percentAvail):
@@ -1249,7 +1255,7 @@ def mailNotifikasiATM(toaddrs, msgSubject, msgBody):
 def TelegramCLISender(telegramName, strNamaFile):
 
 	telegramCommand = 'echo "send_text '+telegramName+' '+strNamaFile+'" | nc 127.0.0.1 8885'
-	telegramCommand = 'proxychains telegram-cli -W -e "send_text '+telegramName+' '+strNamaFile+'"'
+	telegramCommand = 'telegram-cli -W -e "send_text '+telegramName+' '+strNamaFile+'"'
 	print telegramCommand + "\n"
 	os.system(telegramCommand)
 	
@@ -1261,14 +1267,14 @@ def TelegramCLISender(telegramName, strNamaFile):
 
 def TelegramBotSender(chat_id, strText):
 
-	secretKey = "115651882:AAGDNzHXwLKNqOWmHWC8vMXg-Vy_fZD0350"
+	secretKey = "295903056:AAHr5r6WBZNt9ImL5UpIyeM2H_yKgwxBplE"
 
 	encText=urllib.quote_plus(strText)
 
 	strURL = "https://api.telegram.org/bot"+secretKey+"/sendMessage?parse_mode=Markdown&chat_id="+chat_id+"&text="+urllib.quote_plus(strText)
 	# comment out this line below for testing purposes
 	#print strURL
-	os.system('proxychains w3m -dump "'+ strURL+'"')
+	os.system('w3m -dump "'+ strURL+'"')
 
 
 
@@ -1344,11 +1350,14 @@ def NotifikasiATM():
 	
 		msgSubject = "*NOTIFIKASI ATM "+arrBranchName[i] +"* ("+ arrBranchCode[i] +")\n"+time.strftime("%d.%m.%Y-%H:%M")
 
-		percentAvail = getAvailBranch(arrBranchCode[i])
+		percentReal, percentAvail, percentUtil = getAvailUtilBranch(arrBranchCode[i])
+		
+		strColorAvail = colorPercent(percentAvail)
+		strColorUtil = colorPercent(percentUtil)
+		strColorReal = colorPercent(percentReal)
 
-		strColor = colorPercent(percentAvail)
+		availText = "------------------------------------\n*Availability*(UP/ ALL)\n= " + str(percentAvail) +"% -- "+ strColorAvail+"\n*Utility* (TUNAI/ UP)\n= " + str(percentUtil) +"% -- "+ strColorUtil+"\n*RELIABILITY *(TUNAI/ ALL)\n= Availability x Utility \n= " + str(percentReal) +"% -- "+ strColorReal
 
-		availText = "------------------------------------\nAvailability = " + percentAvail +"% -- "+ strColor
 
 		msgBody = msgSubject +"\n"+ availText +"\n"+ str(prepareMessage(arrBranchURL[i]))
 
@@ -1362,7 +1371,7 @@ def NotifikasiATM():
 
 		strNamaFile = prepareTextFile(arrBranchCode[i], strData)
 
-		conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='br1j4k4rt43', db='mantel')
+		conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='5u5ub3ru4n9', db='mantel')
 
 		cur = conn.cursor()
 
@@ -1374,14 +1383,14 @@ def NotifikasiATM():
 			telegram_id =(row[0])
 			#------------------------------------
 			# only for verbose debugging purpose
-			kur = conn.cursor()
-			kur.execute('select telegram_name from mantab where telegram_id="'+telegram_id+'"')
+			#kur = conn.cursor()
+			#kur.execute('select telegram_name from mantab where telegram_id="'+telegram_id+'"')
 
-			for baris in kur:
+			#for baris in kur:
 
-				telegram_name = baris[0]
+				#telegram_name = baris[0]
 
-			kur.close()
+			#kur.close()
 			#print "chat_id", chat_id
 			#------------------------------------
 
@@ -1394,11 +1403,22 @@ def NotifikasiATM():
 			print "\n--------------------------------------------------\n"
 
 
-			print arrBranchName[i]+"--->: "+ telegram_name + "            \r"
+			#print arrBranchName[i]+"--->: "+ telegram_name + "            \r"
 			#print readTextFile(strNamaFile)
 			
+			if len(strText) <= TelegramTextSizeLimit:
+				print "Good"
+				#TelegramBotSender(telegram_id, strText)
+			else:
+				print "longer than " + str(TelegramTextSizeLimit)
+				step = TelegramTextSizeLimit - 100
+				# why reduced by 100? biar gak mepet dengan batas 4096
 
-			TelegramBotSender(telegram_id, strText)
+				for i in range(0, len(strText), TelegramTextSizeLimit):
+					slice = strText[i:step]
+					TelegramBotSender(telegram_id, slice) 
+					print slice
+					step += TelegramTextSizeLimit
 
 		cur.close()
 		conn.close()
