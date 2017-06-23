@@ -2,24 +2,47 @@
 #---------------------------------------
 # NotifikasiATMMerput.py
 # (c) Jansen A. Simanullang
-# 28.01.2017 13:10:40 - 08.03.2017 15:26
+# 28.01.2017 13:10:40 - 23.06.2017 15:34
 # to be used with cron job scheduler
 #---------------------------------------
 # usage: NotifikasiATMMerput
 # script name followed by nothing
 #---------------------------------------
 
-from BeautifulSoup import BeautifulSoup
-import os, sys, time
+import os, sys, time, ConfigParser
 import urllib, urllib2, pymysql
 from operator import itemgetter
+from BeautifulSoup import BeautifulSoup
 
-atmproIP = "172.18.65.42"
-regionName = "JAKARTA III"
-firstURL='http://172.18.65.42/statusatm/dashboard_3.pl?ERROR=CLOSE_ST'
-strHeaderLine = "\n----------------------------------------------\n"
-RegionName = "JAKARTA III"
+Config = ConfigParser.ConfigParser()
+Config.read("conf/config.ini")
+def readConfig(section):
+    dict1 = {}
+    options = Config.options(section)
+    for option in options:
+        try:
+            dict1[option] = Config.get(section, option)
+            if dict1[option] == -1:
+                DebugPrint("skip: %s" % option)
+        except:
+            print("exception on %s!" % option)
+            dict1[option] = None
+    return dict1
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+atmproIP = readConfig("ATMPro")['ipaddress']
+regionID = readConfig("ATMPro")['regionid']
+regionName = readConfig("ATMPro")['regionname']
+secretKey = readConfig("Telegram")['token']
+textLimit = int(readConfig("Telegram")['textlimit'])
+behindProxy=int(readConfig("Internet")['behindproxy'])
+dbhost = readConfig("Mysql")['host']
+dbport = int(readConfig("Mysql")['port'])
+dbuser = readConfig("Mysql")['user']
+dbpass = readConfig("Mysql")['pass']
+dbase = readConfig("Mysql")['dbase']
+strHeader = "\n----------------------------------------------\n"
 scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 def fetchHTML(alamatURL):
 	# fungsi ini hanya untuk mengambil stream string HTML dari alamat URL yang akan dimonitor
@@ -50,10 +73,8 @@ def cleanUpHTML(strHTML):
 	strHTML = strHTML.replace('</th>\n</tr>',"</th></tr><tr>")
 	strHTML = strHTML.replace('</tr>\n\n<td>',"</tr><tr><td>")
 
-
 	strHTML = strHTML.replace(' bgcolor>', '>')
 	strHTML = strHTML.replace('<table class=fancy>','</td></tr></table><table class=fancy>')
-
 
 	return strHTML
 
@@ -345,10 +366,14 @@ def cleanUpNamaCRO(strText):
 	strText = strText.replace("ATM CENTER","")
 	strText = strText.replace(")("," ")
 	strText = strText.replace(")","")
+	strText = strText.replace("("," (")
+	strText = strText.replace("(","")
 	strText = strText.replace("(","")
 	strText = strText.replace("BRINGIN GIGANTARA","BG")
 	strText = strText.replace("BG III","BG")
 	strText = strText.replace("BG II","BG")
+	strText = strText.replace("VENDOR CRO II","")
+	strText = strText.replace("  "," ")
 	strText = strText.replace("SWADARMA SARANA","SSI")
 	strText = strText.replace("SECURICOR","G4S")
 
@@ -365,6 +390,18 @@ def cleanupNamaUker(namaUker):
 	namaUker = namaUker.replace("KANCA ","")
 	namaUker = namaUker.replace("KC ","")
 	namaUker = namaUker.replace(")","")
+	namaUker = namaUker.replace("ATM CENTER","")
+	namaUker = namaUker.replace(")("," ")
+	namaUker = namaUker.replace(")","")
+	namaUker = namaUker.replace("("," (")
+	namaUker = namaUker.replace("(","")
+	namaUker = namaUker.replace("(","")
+	namaUker = namaUker.replace("BRINGIN GIGANTARA","BG")
+	namaUker = namaUker.replace("BG III","BG")
+	namaUker = namaUker.replace("BG II","BG")
+	namaUker = namaUker.replace("VENDOR CRO II","")
+	namaUker = namaUker.replace("SWADARMA SARANA","SSI")
+	namaUker = namaUker.replace("SECURICOR","G4S")
 
 	return namaUker.strip()
 
@@ -423,7 +460,7 @@ def printMessageBody():
 
 	timestamp = "per "+ time.strftime("%d-%m-%Y pukul %H:%M")
 
-	alamatURL = "http://172.18.65.42/statusatm/viewbyregion3drp.pl?REGID=15"
+	alamatURL = "http://172.18.65.42/statusatm/viewbyregion3drp.pl?REGID="+regionID
 
 	table=getLargestTable(getTableList(fetchHTML(alamatURL)))
 	TProRatih = getTProRatih(table)
@@ -465,13 +502,15 @@ def printMessageBody():
 
 def TelegramBotSender(chat_id, strText):
 
-	secretKey = "115651882:AAGDNzHXwLKNqOWmHWC8vMXg-Vy_fZD0350"
-
 	encText=urllib.quote_plus(strText)
 
 	strURL = "https://api.telegram.org/bot"+secretKey+"/sendMessage?parse_mode=Markdown&chat_id="+chat_id+"&text="+urllib.quote_plus(strText)
-	# comment out this line below for testing purposes
-	os.system('proxychains w3m -dump "'+ strURL+'"')
+
+	if behindProxy:
+
+		os.system('proxychains w3m -dump "'+ strURL+'"')
+	else:
+		os.system('w3m -dump "'+ strURL+'"')
 
 
 def NotifikasiATM():
@@ -482,7 +521,7 @@ def NotifikasiATM():
 
 	for key,value in dictMsgBody.iteritems():
 	
-		conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='br1j4k4rt43', db='mantel')
+		conn = pymysql.connect(host=dbhost, port=dbport, user=dbuser, passwd=dbpass, db=dbase)
 		cur = conn.cursor()
 		cur.execute('select telegram_id from notif1 where branchcode like "'+key+'" and active="1"')
 
@@ -492,25 +531,36 @@ def NotifikasiATM():
 			telegram_id =(row[0])
 			#------------------------------------
 			# only for verbose debugging purpose
-			kur = conn.cursor()
-			kur.execute('select telegram_name from mantab where telegram_id="'+telegram_id+'"')
+			#kur = conn.cursor()
+			#kur.execute('select telegram_name from mantab where telegram_id="'+telegram_id+'"')
 
-			for baris in kur:
+			#for baris in kur:
 
-				telegram_name = baris[0]
+			#	telegram_name = baris[0]
 
-			kur.close()
+			#kur.close()
 			#print "chat_id", chat_id
 			#------------------------------------
 
-			# sending using @jak3bot
+			# sending using @telegramBot
 			strText = value
 			print strText
 			#print "\n--------------------------------------------------\n"
-			print key+"--->: "+ telegram_name + "            \r"
+			#print key+"--->: "+ telegram_name + "            \r"
 		
 
-			TelegramBotSender(telegram_id, value)
+			if len(strText) <= textLimit:
+				print "Good"
+				TelegramBotSender(telegram_id, strText)
+			else:
+				print "longer than " + str(textLimit)
+				step = textLimit
+
+				for i in range(0, len(strText), textLimit):
+					slice = strText[i:step]
+					TelegramBotSender(telegram_id, slice)
+					print slice
+					step += textLimit
 
 		cur.close()
 		conn.close()
