@@ -61,7 +61,7 @@ def getLargestTable(arrTable):
 		# cek satu per satu jumlah baris yang ada pada masing-masing tabel dalam array kumpulan tabel
 		# simpan dalam variabel bernama numRows
 
-		numRows = len(table.findAll(lambda tag: tag.name == 'tr' and tag.findParent('table') == table))
+		numRows = len(table.findAll(lambda tag: tag.name == 'th' and tag.findParent('table') == table))
 		
 		# jika jumlah baris pada suatu tabel lebih besar daripada '0' maka jadikan sebagai max_rows sementara
 		# proses ini diulangi terus menerus maka max_rows akan berisi jumlah baris terbanyak
@@ -251,51 +251,24 @@ def getRowIndex(table, strSearchKey):
 	return rowIndex
 
 
-def getATMStats(table):
-
-	soup = BeautifulSoup(str(table))
-	
-	rows = soup.findAll('tr')
-
-	numRows = getRowsNumber(table)
-
-	numRowsHead = getRowsHeadNumber(table)
-
-	#print numRowsHead, numRows
-
-	msgBody = ""
-	
-	for i in range (0, numRows):
-
-		trs = BeautifulSoup(str(rows[i]))
-
-		tdcells = trs.findAll("td")
-		thcells = trs.findAll("th")
-
-		#print len(tdcells), len(thcells)
-
-		if thcells:
-
-			msgBody += "\n\n" + thcells[0].getText().upper() + "\n----------------------------------------------------------------------\n"
-
-		if tdcells:
-
-			if len(tdcells) > 1:
-
-				msgBody += tdcells[0].getText().upper()+": "+ tdcells[1].getText() +"\n"
-
-
-	return msgBody
-
-
 if len(sys.argv) > 0:
 
 	TID = sys.argv[1]
 
 	alamatURL = "http://172.18.65.42/statusatm/viewatmdetail.pl?ATM_NUM="+ TID
 
-	msgBody = getATMStats(table=getLargestTable(getTableList(fetchHTML(alamatURL))))
+	table = getTableList(fetchHTML(alamatURL))[1]
+	soup = BeautifulSoup(str(table))
+	rows = soup.findAll('tr')
+	i=0
+	for row in rows:
+		i += 1
+		if row.findAll('th'):
+			head = str(row.getText().upper())
+			if i > 1:
+				print "\n*"+ head + "*\n--------------------------------------------------------"
 
-	print msgBody
-
-
+		if row.findAll('td'):
+			cells = row.findAll('td')
+			if i > 1:
+				print str(cells[0].getText())+":", str(cells[-1].getText()).replace("_"," ").replace("OK","*OK*").replace("OUT","*OUT*").replace("LOW","*LOW*").replace("FAIL","*FAIL*")
