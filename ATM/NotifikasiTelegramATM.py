@@ -3,7 +3,7 @@
 #---------------------------------------
 # NotifikasiTelegramATM.py
 # (c) Jansen A. Simanullang
-# 06.10.2015 - 08.03.2017 14:04
+# 06.10.2015 - 23.06.2017
 # to be used with cron and MariaDB
 # @Medan City, Juni 2017
 #---------------------------------------
@@ -11,33 +11,59 @@
 # NotifikasiTelegramATM
 #---------------------------------------
 
-
-from urllib import urlopen
-from BeautifulSoup import BeautifulSoup
-import os, sys, time, urlparse, smtplib
-import urllib, urllib2, pymysql
+import smtplib
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 from email.MIMEImage import MIMEImage
 
-
-################################################################################################
-firstURL='http://172.18.65.42/statusatm/dashboard_3.pl?ERROR=CLOSE_ST'
-RegionName = "Medan"
-TelegramTextSizeLimit=4096
+#---------------------------------------
 lastEdit = "Juni 2017"
-################################################################################################
+#---------------------------------------
 
+import os, sys, time, ConfigParser
+import urllib, urllib2, pymysql
+from operator import itemgetter
+from urllib import urlopen
+from BeautifulSoup import BeautifulSoup
+
+Config = ConfigParser.ConfigParser()
+Config.read("conf/config.ini")
+def readConfig(section):
+    dict1 = {}
+    options = Config.options(section)
+    for option in options:
+        try:
+            dict1[option] = Config.get(section, option)
+            if dict1[option] == -1:
+                DebugPrint("skip: %s" % option)
+        except:
+            print("exception on %s!" % option)
+            dict1[option] = None
+    return dict1
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+atmproIP = readConfig("ATMPro")['ipaddress']
+regionID = readConfig("ATMPro")['regionid']
+regionName = readConfig("ATMPro")['regionname']
+secretKey = readConfig("Telegram")['token']
+textLimit = int(readConfig("Telegram")['textlimit'])
+behindProxy=int(readConfig("Internet")['behindproxy'])
+dbhost = readConfig("Mysql")['host']
+dbport = int(readConfig("Mysql")['port'])
+dbuser = readConfig("Mysql")['user']
+dbpass = readConfig("Mysql")['pass']
+dbase = readConfig("Mysql")['dbase']
+strHeader = "\n----------------------------------------------\n"
 scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 asciiArt="""
 	   ▄▄▄▄▄▄▄▄▄
-        ▄█████████████▄ 
+        ▄█████████████▄
 █████  █████████████████  █████
 ▐████▌ ▀███▄       ▄███▀ ▐████▌
  █████▄  ▀███▄   ▄███▀  ▄█████
- ▐██▀███▄  ▀███▄███▀  ▄███▀██▌    
-  ███▄▀███▄  ▀███▀  ▄███▀▄███ 
+ ▐██▀███▄  ▀███▄███▀  ▄███▀██▌
+  ███▄▀███▄  ▀███▀  ▄███▀▄███
   ▐█▄▀█▄▀███ ▄─▀─▄ ███▀▄█▀▄█▌
    ███▄▀█▄██ ██▄██ ██▄█▀▄███
     ▀███▄▀██ █████ ██▀▄███▀
@@ -57,54 +83,54 @@ asciiArt="""
 
 asciiArt="""
 	   ▄▄▄▄▄▄▄▄▄
-        ▄█████████████▄ 
+        ▄█████████████▄
 █████  █████████████████  █████
 ▐████▌ ▀███▄       ▄███▀ ▐████▌
- █████▄  ▀███▄   ▄███▀  ▄█████    SISTEM NOTIFIKASI ATM melalui 
+ █████▄  ▀███▄   ▄███▀  ▄█████    SISTEM NOTIFIKASI ATM melalui
 """
 
-asciiArt = asciiArt +" ▐██▀███▄  ▀███▄███▀  ▄███▀██▌    MEDIA ONLINE TELEGRAM "+RegionName
+asciiArt = asciiArt +" ▐██▀███▄  ▀███▄███▀  ▄███▀██▌    MEDIA ONLINE TELEGRAM "+regionName
 asciiArt = asciiArt +"""
-  ███▄▀███▄  ▀███▀  ▄███▀▄███     
+  ███▄▀███▄  ▀███▀  ▄███▀▄███
   ▐█▄▀█▄▀███ ▄▀ ▀▄ ███▀▄█▀▄█▌     (c) JANSEN SIMANULLANG
    ███▄▀█▄██ ██ ██ ██▄█▀▄███      MEI 2015 - """+lastEdit.upper()+"""
     ▀███▄▀██ ██ ██ ██▀▄███▀
    █▄ ▀█████ █████ █████▀ ▄█        \__/  \__/  \__/  \__/  \__/  \__/
    ███        ███	 ███      __/  \__/  \__/  \__/  \__/  \__/  \_
-   ███▄    ▄█ ███ █▄	▄███        \__/  \__/  \__/  \__/  \__/  \__/ 
+   ███▄    ▄█ ███ █▄	▄███        \__/  \__/  \__/  \__/  \__/  \__/
    █████ ▄███ ███ ███▄ █████     \__/  \__/  \__/  \__/  \__/  \__/  \_
-   █████ ████ ███ ████ █████        \__/  \__/  \__/  \__/  \__/  \__/ 
-   █████ ████ ███ ████ █████     \__/  \__/  \__/  \__/  \__/  \__/  \_ 
-   █████ ████ ███ ████ █████        \__/  \__/  \__/  \__/  \__/  \__/ 
-   █████ ████▄▄▄▄▄████ █████     \__/  \__/  \__/  \__/  \__/  \__/   
+   █████ ████ ███ ████ █████        \__/  \__/  \__/  \__/  \__/  \__/
+   █████ ████ ███ ████ █████     \__/  \__/  \__/  \__/  \__/  \__/  \_
+   █████ ████ ███ ████ █████        \__/  \__/  \__/  \__/  \__/  \__/
+   █████ ████▄▄▄▄▄████ █████     \__/  \__/  \__/  \__/  \__/  \__/
     ▀███ █████████████ ███▀    __/  \__/  \__/  \__/  \__/  \__/  \__/
-      ▀█ ███ ▄▄▄▄▄ ███ █▀     /  \__/  \__/  \__/  \__/  \__/  \__/  
+      ▀█ ███ ▄▄▄▄▄ ███ █▀     /  \__/  \__/  \__/  \__/  \__/  \__/
          ▀█▌▐█████▌▐█▀        \__/  \__/  \__/  \__/  \__/  \__/  \__/
-            ███████        \__/  \__/  \__/  \__/  \__/  \__/  \__/  
+            ███████        \__/  \__/  \__/  \__/  \__/  \__/  \__/
 """
 """
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
-__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/ 
+__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
   \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \_
 """
 def clearScreen():
@@ -115,7 +141,7 @@ def clearScreen():
 		os.system('cls')
 
 def welcomeScreen():
-	
+
 	clearScreen()
 
 	print asciiArt
@@ -138,7 +164,7 @@ def getDomainParts(alamatURL):
 	arrDomainParts = parts[1].split('/', countDomainLevel(alamatURL))
 
 	return protocol, arrDomainParts
-	
+
 
 
 def nLevelDomain(alamatURL, n):
@@ -157,19 +183,11 @@ def nLevelDomain(alamatURL, n):
 
 
 
-def getQueryContent(alamatURL, strQuery):
-	
-	parsed = urlparse.urlparse(alamatURL)
-	QueryContent = str(urlparse.parse_qs(parsed.query)[strQuery][0])
-	return QueryContent
-
-
-
 def cleanUpHTML(strHTML):
 
 	URLdomain = nLevelDomain(alamatURL, 1)
 	URLdomain2 = nLevelDomain(alamatURL, 2)
-	
+
 	# fixing broken HTML
 	strHTML = strHTML.replace('</tr><td>',"</tr><tr><td>")
 	strHTML = strHTML.replace('</td></tr><td>','</td></tr><tr><td>')
@@ -190,7 +208,7 @@ def cleanUpHTML(strHTML):
 	strHTML = strHTML.replace("href='../","href='"+URLdomain2)
 
 	return strHTML
-	
+
 
 
 def fetchHTML(alamatURL):
@@ -207,7 +225,7 @@ def fetchHTML(alamatURL):
 	strHTML = cleanUpHTML(strHTML)
 
 	mysoup = BeautifulSoup(strHTML)
-	
+
 	#print ">> URL fetched."
 
 	return strHTML
@@ -241,7 +259,7 @@ def getStyleList(strHTML):
 	for i in range (0, len(arrStyle)):
 
 		strStyle = strStyle + str(arrStyle[i])
-	
+
 	return strStyle
 
 
@@ -259,7 +277,7 @@ def getHeading(strHTML):
 	if heading1 != []:
 
 		strHeading = heading1[0].getText().upper()
-		strHeading = strHeading.replace("BY REGION", RegionName)
+		strHeading = strHeading.replace("BY REGION", regionName)
 
 
 	heading3 = mysoup.findAll('h3')
@@ -267,14 +285,14 @@ def getHeading(strHTML):
 	if heading3 != []:
 
 		strHeading = heading3[0].getText().upper()
-		strHeading = strHeading.replace("REGION: "+RegionName+" - ", "")
+		strHeading = strHeading.replace("REGION: "+regionName+" - ", "")
 		strHeading = strHeading.replace("FOR REGION", "")
 
 
 
 	else:
-		strHeading = 'AVAILABILITY ATM BRI ' + RegionName
-	
+		strHeading = 'AVAILABILITY ATM BRI ' + regionName
+
 
 	#
 	strHeading = strHeading.replace("LIST OF", "")
@@ -302,12 +320,12 @@ def getLargestTable(arrTable):
 		# simpan dalam variabel bernama numRows
 
 		numRows = len(table.findAll(lambda tag: tag.name == 'tr' and tag.findParent('table') == table))
-		
+
 		# jika jumlah baris pada suatu tabel lebih besar daripada '0' maka jadikan sebagai max_rows sementara
 		# proses ini diulangi terus menerus maka max_rows akan berisi jumlah baris terbanyak
 
 		if numRows > max_rows:
-			
+
 		        largest_table = table
 			max_rows = numRows
 
@@ -336,12 +354,12 @@ def getWidestTable(arrTable):
 		# simpan dalam variabel bernama numRows
 
 		numCols = len(table.contents[1])
-		
+
 		# jika jumlah baris pada suatu tabel lebih besar daripada '0' maka jadikan sebagai max_rows sementara
 		# proses ini diulangi terus menerus maka max_rows akan berisi jumlah baris terbanyak
 
 		if numCols > max_cols:
-			
+
 		        widest_table = table
 			max_cols = numCols
 
@@ -361,7 +379,7 @@ def getColsNumber(table):
 	# bagaimana cara menentukan berapa jumlah kolomnya?
 
 	numCols = len(table.contents[1])
-	
+
 	return numCols
 
 
@@ -371,7 +389,7 @@ def getRowsNumber(table):
 	# bagaimana cara menentukan berapa jumlah kolomnya?
 
 	numRows = len(table.findAll(lambda tag: tag.name == 'tr' and tag.findParent('table') == table))
-	
+
 	return numRows
 
 
@@ -386,15 +404,15 @@ def getRowsHeadNumber(table):
 
 	# inisialisasi variabel numRowsHead sebagai jumlah baris yang mengandung header
 
-	numRowsHead = 0	
-	
+	numRowsHead = 0
+
 	# periksa satu per satu setiap baris
 
 	for i in range (0, numRows):
-		
+
 		# apabila dalam suatu baris tertentu terdapat tag <th>
 		if rows[i].findAll('th'):
-			
+
 			# maka numRows bertambah 1
 			numRowsHead = i + 1
 
@@ -406,11 +424,11 @@ def getRowsHeadNumber(table):
 
 
 def getTableDimension(table):
-	
+
 	numRows = getRowsNumber(table)
 	numRowsHead = getRowsHeadNumber(table)
 	numCols = getColsNumber(table)
-	
+
 	return numRows, numRowsHead, numCols
 
 
@@ -421,7 +439,7 @@ def fileCreate(strNamaFile, strData):
 	f.close()
 
 
-    
+
 def fileAppend(strNamaFile, strData):
 	f = open(strNamaFile, "a")
 	f.writelines(str(strData))
@@ -436,11 +454,11 @@ def getTableHeader(table):
 	soup = BeautifulSoup(str(table))
 	rows = soup.findAll('tr', limit=numRowsHead)
 	strHTMLTableHeader = ""
-	
+
 	for i in range (0, numRowsHead):
 
 		strHTMLTableHeader = strHTMLTableHeader + str(rows[i])
-	
+
 	return strHTMLTableHeader
 
 
@@ -456,7 +474,7 @@ def getSpecificRows(table, rowIndex):
 	for i in range (rowIndex, rowIndex+1):
 
 		strHTMLTableRows = str(rows[i])
-	
+
 	return strHTMLTableRows
 
 
@@ -473,7 +491,7 @@ def getTableContents(table):
 	for i in range (numRowsHead, numRows):
 
 		strHTMLTableContents = strHTMLTableContents + str(rows[i])
-	
+
 	return strHTMLTableContents
 
 
@@ -484,7 +502,7 @@ def getRowIndex(table, strSearchKey):
 
 	soup = BeautifulSoup(str(table))
 	rows = soup.findAll('tr')
-	
+
 	numRows = len(table.findAll(lambda tag: tag.name == 'tr' and tag.findParent('table') == table))
 
 	rowIndex = 0
@@ -493,11 +511,11 @@ def getRowIndex(table, strSearchKey):
 
 		trs = BeautifulSoup(str(rows[i]))
 		tdcells = trs.findAll("td")
-			
+
 		for j in range (0, len(tdcells)):
 
 			if tdcells[j].getText().upper() == strSearchKey.upper():
-				
+
 				rowIndex = i
 
 				#print "we got the index = ", rowIndex, "from ", numRows, "for search key ='"+strSearchKey+"'"
@@ -508,7 +526,7 @@ def getNamaFile(strHTML):
 
 	strHeading = getHeading(strHTML)
 
-	protocol, arrDomainParts = getDomainParts(alamatURL) 
+	protocol, arrDomainParts = getDomainParts(alamatURL)
 
 	namaSkrip = arrDomainParts[-1].split('?')[0].replace('.pl','')
 
@@ -527,7 +545,7 @@ def prepareFile(strNamaFile):
 	strHTML = fetchHTML(alamatURL)
 
 
-	strData = '<HTML><HEAD><TITLE>MONITORING ATM '+ RegionName +'</TITLE><META HTTP-EQUIV="REFRESH" CONTENT="3600">' + getStyleList(strHTML) + '</HEAD><body>'
+	strData = '<HTML><HEAD><TITLE>MONITORING ATM '+ regionName +'</TITLE><META HTTP-EQUIV="REFRESH" CONTENT="3600">' + getStyleList(strHTML) + '</HEAD><body>'
 
 	strData = strData + "<h1>"+ getHeading(strHTML) + "</h1><h3>per tanggal " + time.strftime("%d.%m.%Y jam %H:%M:%S") + "</h3>"
 
@@ -554,7 +572,7 @@ def getHTMLnWritefromURLList(strNamaFile, arrURL):
 	strHTML = '<div id="content"><table class="tabel2">'
 
 	fileAppend(strNamaFile, strHTML)
-	
+
 	strHTMLTableContents = ""
 
 	for i in range (0, 1):
@@ -566,12 +584,12 @@ def getHTMLnWritefromURLList(strNamaFile, arrURL):
 		table = getLargestTable(arrTable)
 
 		strHTMLTableContents = strHTMLTableContents + getTableContents(table)
-		
-	strHTML = getTableHeader(table) + strHTMLTableContents	
 
-	fileAppend(strNamaFile, strHTML)	
+	strHTML = getTableHeader(table) + strHTMLTableContents
 
-		
+	fileAppend(strNamaFile, strHTML)
+
+
 	for i in range (1, len(arrURL)):
 
 		alamatURL = arrURL[i]
@@ -589,18 +607,18 @@ def getHTMLnWritefromURLList(strNamaFile, arrURL):
 	fileAppend(strNamaFile, strHTML)
 
 	###
-	
+
 	#print "\a\n>>>>FILE CREATED :\n", strNamaFile, "<<<<\a\n"
 
 	### TODO: play a beep sound
-		
+
 
 
 def ExtractLinksToFile(alamatURL):
 
 	strHTML = fetchHTML(alamatURL)
-	
-	strNamaFile = getNamaFile(strHTML) 
+
+	strNamaFile = getNamaFile(strHTML)
 
 	prepareFile(strNamaFile)
 
@@ -619,7 +637,7 @@ def extractURL(strHTML):
 	# this function finds all non-'0" links
 	# nLevelDomain(alamatURL, 3)  --> http://172.18.65.42/monitorATM/dashboardNew/
 
-	URLdomain = nLevelDomain(alamatURL, 0) 
+	URLdomain = nLevelDomain(alamatURL, 0)
 
 	mysoup = BeautifulSoup(strHTML)
 
@@ -632,14 +650,14 @@ def extractURL(strHTML):
 	for i in range(0, len(arrURL)):
 
 		if arrURL[i].getText() == "0":
-			
+
 			numZeros = numZeros + 1
 			indexZero.append(i)
 
 		else:
 
 			arrURL[i] = arrURL[i].get('href')
-		
+
 	#print "We have", len(arrURL), "URLs."
 
 	if numZeros:
@@ -670,7 +688,7 @@ def prepareDirectory(strOutputDir):
 	fullPath = scriptDirectory
 
 	for i in range (0, len(arrDirectoryStructure)):
-	
+
 		fullPath = fullPath + arrDirectoryStructure[i] + "/"
 
 		if not os.path.exists(fullPath):
@@ -689,7 +707,7 @@ def readBranchCode():
 	arrBranchName = []
 
 	fName = scriptDirectory +"conf/branchCode.888"
-		
+
 	f = open(fName)
 
 	for baris in f.readlines():
@@ -710,7 +728,7 @@ def getBranchCode(alamatURL):
 	table = getWidestTable(getTableList(strHTML))
 
 	soup = BeautifulSoup(str(table))
-	
+
 	rows = soup.findAll('tr')
 
 	numRows = getRowsNumber(table)
@@ -723,7 +741,7 @@ def getBranchCode(alamatURL):
 		#time.sleep(60)
 		arrBranchCode, arrBranchName = readBranchCode()
 
-		
+
 
 	arrBranchCode = [None]*numRows
 	arrBranchName = [None]*numRows
@@ -744,7 +762,7 @@ def getBranchCode(alamatURL):
 		except:
 			print "tidak ada data"
 
-	try:	
+	try:
 	# remove unnecessary items containing None in the 1st, 2nd and the last
 		arrBranchCode.remove(arrBranchCode[0])
 		arrBranchCode.remove(arrBranchCode[0])
@@ -756,7 +774,7 @@ def getBranchCode(alamatURL):
 
 	except IndexError:
 		pass
-		
+
 
 	return arrBranchCode, arrBranchName
 
@@ -765,15 +783,15 @@ def getBranchURL(arrBranchCode):
 	arrBranchURL=[None] * len(arrBranchCode)
 
 	for i in range(0, len(arrBranchCode)):
-		
+
 		arrBranchURL[i] = "http://172.18.65.42/statusatm/viewbybranch6.pl?AREA_ID="+arrBranchCode[i]
 
 		#print arrBranchURL[i]
-	
+
 	return arrBranchURL
 
 def getBranchPage(alamatURL):
-	
+
 	try:
 		strHTML = fetchHTML(alamatURL)
 
@@ -808,7 +826,7 @@ def getColIndex(table, strSearchKey1, strSearchKey2):
 
 		trs = BeautifulSoup(str(rows[i]))
 		thcells = trs.findAll("th")
-			
+
 		for i in range (0, len(thcells)):
 
 			if ("colspan" in str(thcells[i]) and thcells[i].findAll('a')[0].getText().upper() == strSearchKey1.upper()):
@@ -819,17 +837,17 @@ def getColIndex(table, strSearchKey1, strSearchKey2):
 
 				colIndex1 = (i-1) * intColSpan + 1
 
-				
+
 			elif ("rowspan" in str(thcells[i]) and thcells[i].getText().upper() == strSearchKey1.upper()):
 
 				intColSpan = 1
 
-				colIndex1 = (i-1) * intColSpan + 1 
+				colIndex1 = (i-1) * intColSpan + 1
 
 				print i, "rowspan"
 	#colIndex2 = 0
 	for i in range (1, 2):
-					
+
 		soup = BeautifulSoup(str(rows[i]))
 		thcells2 = soup.findAll("th")
 
@@ -838,13 +856,13 @@ def getColIndex(table, strSearchKey1, strSearchKey2):
 		maxIndex = colIndex1 - 1
 
 		for i in range (0, maxIndex):
-		
+
 			if thcells2[i].getText().upper() == strSearchKey2.upper():
 				colIndex2 = i+2 # the factor +2 is due to the two columns with the rowspan before
-				
 
 
-				
+
+
 	print "we got the col index = (", colIndex1, ") from ", numCols-1, "index for search key ='"+strSearchKey1+"'"
 	print "we got the col index = (", colIndex2, ") from ", numCols-1, "index for search key ='"+strSearchKey2+"'"
 	return colIndex2
@@ -853,9 +871,9 @@ def getColIndex(table, strSearchKey1, strSearchKey2):
 def getATMProbStats(table):
 
 	#print "getting List of ATMs requires attention..."
-	
+
 	soup = BeautifulSoup(str(table))
-	
+
 	rows = soup.findAll('tr')
 
 	numRows = getRowsNumber(table)
@@ -917,7 +935,7 @@ def getATMProbStats(table):
 				arrCOMCRO.append(str(numCOMCRO) + ") " + tid + "\t" + tidlocation + ", " + cleanupLocation(strPengelola)+ ", " + durasi)
 			else:
 				numCOMUKO = numCOMUKO + 1
-				
+
 				arrCOMUKO.append(str(numCOMUKO) + ") " + tid + "\t" + tidlocation + ", " + cleanupLocation(strPengelola)+ ", " + durasi)
 
 
@@ -942,9 +960,9 @@ def getATMProbStats(table):
 				arrCOCRO.append(str(numCOCRO) + ") " + tid + "\t" + tidlocation + ", " + cleanupLocation(strPengelola)+ ", " + durasi)
 			else:
 				numCOUKO = numCOUKO + 1
-				
+
 				arrCOUKO.append(str(numCOUKO) + ") " + tid + "\t" + tidlocation + ", " + cleanupLocation(strPengelola)+ ", " + durasi)
-	
+
 #----------- CL
 		if tdcells[9].getText() == "LOW":
 
@@ -965,9 +983,9 @@ def getATMProbStats(table):
 				arrCLCRO.append(str(numCLCRO) + ") " + tid + "\t" + tidlocation + ", " + cleanupLocation(strPengelola)+ ", " + durasi)
 			else:
 				numCLUKO = numCLUKO + 1
-				
+
 				arrCLUKO.append(str(numCLUKO) + ") " + tid + "\t" + tidlocation + ", " + cleanupLocation(strPengelola)+ ", " + durasi)
-	
+
 
 #----------- CCR
 
@@ -990,7 +1008,7 @@ def getATMProbStats(table):
 				arrCCRCRO.append(str(numCCRCRO) + ") " + tid + "\t" + tidlocation + ", " + cleanupLocation(strPengelola)+ ", " + durasi)
 			else:
 				numCCRUKO = numCCRUKO + 1
-				
+
 				arrCCRUKO.append(str(numCCRUKO) + ") " + tid + "\t" + tidlocation + ", " + cleanupLocation(strPengelola)+ ", " + durasi)
 
 #----------- DISP STATUS/ DF
@@ -1013,9 +1031,9 @@ def getATMProbStats(table):
 				arrDFCRO.append(str(numDFCRO) + ") " + tid + "\t" + tidlocation + ", " + cleanupLocation(strPengelola)+ ", " + durasi)
 			else:
 				numDFUKO = numDFUKO + 1
-				
+
 				arrDFUKO.append(str(numDFUKO) + ") " + tid + "\t" + tidlocation + ", " + cleanupLocation(strPengelola)+ ", " + durasi)
-	
+
 
 
 
@@ -1030,7 +1048,7 @@ def getATMProbStats(table):
 	#arrDFCRO.remove(arrDFCRO[0])
 
 	if ((numOOSUKO > 0) or (numCOUKO > 0) or (numCLUKO > 0) or (numDFUKO > 0) or (numCOMUKO > 0) or (numCCRUKO > 0)):
-		
+
 		msgBody = msgBody + "\n*[PROBLEM ATM UKO]*\n"
 
 	if numCOUKO:
@@ -1061,7 +1079,7 @@ def getATMProbStats(table):
 
 
 	if (numOOSCRO !=0 or numCOCRO !=0 or numCLCRO !=0 or numDFCRO !=0 or numCOMCRO !=0 or numCCRCRO !=0):
-		
+
 		msgBody = msgBody + "\n*[PROBLEM ATM CRO]*\n"
 
 	if numCOCRO:
@@ -1119,7 +1137,7 @@ def cleanupLocation(tidlocation):
 	tidlocation = tidlocation.replace("JKT 1","")
 	tidlocation = tidlocation.replace("JKT 2","")
 	tidlocation = tidlocation.replace("JKT 3","")
-	tidlocation = tidlocation.replace("JKT1 ","")	
+	tidlocation = tidlocation.replace("JKT1 ","")
 	tidlocation = tidlocation.replace("JKT2 ","")
 	tidlocation = tidlocation.replace("JKT3 ","")
 	tidlocation = tidlocation.replace("JAK 3","")
@@ -1132,7 +1150,7 @@ def cleanupLocation(tidlocation):
 
 def getPengelolaSupervisi(strTID):
 
-	try:	
+	try:
 		strURL = "http://172.18.65.42/statusatm/viewatmdetail.pl?ATM_NUM="+strTID
 
 		strHTML = fetchHTML(strURL)
@@ -1144,9 +1162,9 @@ def getPengelolaSupervisi(strTID):
 		mysoup = BeautifulSoup(strHTMLTableRows)
 
 		arrTDs = mysoup.findAll('td')
-	
+
 		strPengelola = arrTDs[1].getText()
-		
+
 		strHTMLTableRows = getSpecificRows(table, getRowIndex(table, "KC Supervisi"))
 
 		mysoup = BeautifulSoup(strHTMLTableRows)
@@ -1156,7 +1174,7 @@ def getPengelolaSupervisi(strTID):
 		strSupervisi = arrTDs[1].getText()
 
 	except IndexError:
-	
+
 		strPengelola, strSupervisi = getPengelolaSupervisi(strTID)
 
 	except RuntimeError:
@@ -1169,8 +1187,8 @@ def getPengelolaSupervisi(strTID):
 
 def getAvailUtilBranch(branchCode):
 
-	try:	
-		strURL = 'http://172.18.65.42/statusatm/dashboard_cabang.pl?REGID=02&REGNAME=Medan'
+	try:
+		strURL = 'http://172.18.65.42/statusatm/dashboard_cabang.pl?REGID='+regionID+'&REGNAME=Medan'
 
 		strHTML = fetchHTML(strURL)
 
@@ -1187,7 +1205,7 @@ def getAvailUtilBranch(branchCode):
 		percentUtil = arrTDs[13].getText().strip()
 
 	except IndexError:
-	
+
 		percentReal, percentAvail, percentUtil = getAvailUtilBranch(branchCode)
 
 	return float(percentReal), float(percentAvail), float(percentUtil)
@@ -1240,7 +1258,7 @@ def mailNotifikasiATM(toaddrs, msgSubject, msgBody):
 
 	    print "logging into mail server"
 	    server.login(username,password)
-	    
+
 	    print "sending mail..."
 	    server.sendmail(fromaddr, toaddrs, msg.as_string())
 
@@ -1258,7 +1276,7 @@ def TelegramCLISender(telegramName, strNamaFile):
 	telegramCommand = 'telegram-cli -W -e "send_text '+telegramName+' '+strNamaFile+'"'
 	print telegramCommand + "\n"
 	os.system(telegramCommand)
-	
+
 	#telegramName = 'Jansen_Simanullang'
 	#os.system('echo "send_text Jansen_Simanullang '+strNamaFile+'" | nc 127.0.0.1 888')
 	#TelegramCLISender(telegramName, strNamaFile)
@@ -1267,14 +1285,15 @@ def TelegramCLISender(telegramName, strNamaFile):
 
 def TelegramBotSender(chat_id, strText):
 
-	secretKey = "295903056:AAHr5r6WBZNt9ImL5UpIyeM2H_yKgwxBplE"
-
 	encText=urllib.quote_plus(strText)
 
 	strURL = "https://api.telegram.org/bot"+secretKey+"/sendMessage?parse_mode=Markdown&chat_id="+chat_id+"&text="+urllib.quote_plus(strText)
-	# comment out this line below for testing purposes
-	#print strURL
-	os.system('w3m -dump "'+ strURL+'"')
+
+	if behindProxy:
+
+		os.system('proxychains w3m -dump "'+ strURL+'"')
+	else:
+		os.system('w3m -dump "'+ strURL+'"')
 
 
 
@@ -1283,7 +1302,7 @@ def readTextFile(strNamaFile):
 	fText = open(strNamaFile)
 
 	strText = ""
-					
+
 	for baris in fText.readlines():
 
 		strText += baris
@@ -1307,10 +1326,10 @@ def prepareMessage(alamatURL):
 
 		#print "@@@@@@@@@@@\n"+msgBody+"@@@@@@@@@@@"
 
-		
+
 
 	except IndexError:
-		
+
 		print "site data not yet ready, sleeping for thirty seconds..."
 
 		time.sleep(30)
@@ -1324,7 +1343,9 @@ def prepareMessage(alamatURL):
 
 def NotifikasiATM():
 
-	global alamatURL, strHTML, RegionName, table, arrBranchCode
+	global alamatURL, strHTML, regionName, table, arrBranchCode
+
+	firstURL='http://172.18.65.42/statusatm/dashboard_3.pl?ERROR=CLOSE_ST'
 
 	alamatURL = firstURL
 
@@ -1332,14 +1353,14 @@ def NotifikasiATM():
 
 	table = getWidestTable(getTableList(strHTML))
 
-	strHTMLTableRows = getSpecificRows(table, getRowIndex(table, RegionName))
+	strHTMLTableRows = getSpecificRows(table, getRowIndex(table, regionName))
 
 	arrURL = extractURL(strHTMLTableRows)
-	
+
 	alamatURL = arrURL[0] 	# dapatkan dashboard wilayah yang diinginkan saja
 
 	#print alamatURL #--> alamat URL se-Kanwil yang diinginkan
-		
+
 	arrBranchCode, arrBranchName = getBranchCode(alamatURL)
 
 	arrBranchURL = getBranchURL(arrBranchCode)
@@ -1347,11 +1368,11 @@ def NotifikasiATM():
 	print "Mengirimkan notifikasi "
 
 	for i in range(0, len(arrBranchURL)):
-	
+
 		msgSubject = "*NOTIFIKASI ATM "+arrBranchName[i] +"* ("+ arrBranchCode[i] +")\n"+time.strftime("%d.%m.%Y-%H:%M")
 
 		percentReal, percentAvail, percentUtil = getAvailUtilBranch(arrBranchCode[i])
-		
+
 		strColorAvail = colorPercent(percentAvail)
 		strColorUtil = colorPercent(percentUtil)
 		strColorReal = colorPercent(percentReal)
@@ -1362,7 +1383,7 @@ def NotifikasiATM():
 		msgBody = msgSubject +"\n"+ availText +"\n"+ str(prepareMessage(arrBranchURL[i]))
 
 		print msgBody
-		
+
 
 		# create text file in the output folder
 		strNamaFile = ""
@@ -1371,7 +1392,7 @@ def NotifikasiATM():
 
 		strNamaFile = prepareTextFile(arrBranchCode[i], strData)
 
-		conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='5u5ub3ru4n9', db='mantel')
+		conn = pymysql.connect(host=dbhost, port=dbport, user=dbuser, passwd=dbpass, db=dbase)
 
 		cur = conn.cursor()
 
@@ -1405,20 +1426,22 @@ def NotifikasiATM():
 
 			#print arrBranchName[i]+"--->: "+ telegram_name + "            \r"
 			#print readTextFile(strNamaFile)
-			
-			if len(strText) <= TelegramTextSizeLimit:
-				print "Good"
-				#TelegramBotSender(telegram_id, strText)
-			else:
-				print "longer than " + str(TelegramTextSizeLimit)
-				step = TelegramTextSizeLimit - 100
-				# why reduced by 100? biar gak mepet dengan batas 4096
 
-				for i in range(0, len(strText), TelegramTextSizeLimit):
+			if len(strText) <= textLimit:
+
+				print "Good"
+				TelegramBotSender(telegram_id, strText)
+			else:
+				print "longer than " + str(textLimit)
+
+				step = textLimit
+
+				for i in range(0, len(strText), textLimit):
+
 					slice = strText[i:step]
-					TelegramBotSender(telegram_id, slice) 
+					TelegramBotSender(telegram_id, slice)
 					print slice
-					step += TelegramTextSizeLimit
+					step += textLimit
 
 		cur.close()
 		conn.close()
