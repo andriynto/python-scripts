@@ -1,13 +1,14 @@
 #!/usr/bin/python
 #---------------------------------------
-# fetchStatusATMOFF.py
+# fetchStatusATMNonTunai.py
 # (c) Jansen A. Simanullang, 11:15:55
-# @BSD CITY: 14 Januari 2016 09:04:11 - 
-# 22.11.2016 15:48 
-# @MEDAN CITY: 24.06.2017
+# @BSD City: 14 Januari 2016 09:04:11
+# 13 Agustus 2016 13:58:28 - 15:30, 16:33
+# 28 November 2016 14:36 # asterisks added
+# @Medan City: 24.06.2017
 # to be used with telegram-bot plugin
 #---------------------------------------
-# usage: fetchStatusATMOFF cro/uko/kode cabang
+# usage: fetchStatusATMNonTunai cro/uko/kode cabang
 # script name followed by cro/uko or branchCode
 #---------------------------------------
 
@@ -15,13 +16,12 @@ from BeautifulSoup import BeautifulSoup
 import os, sys, time
 import urllib2
 from operator import itemgetter
-
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
 from loadConfig import readConfig
-regionID = readConfig("Atmpro")['regionid'].upper()
+regionID = readConfig("Atmpro")['regionid']
 regionName = readConfig("Atmpro")['regionname']
-strHeaderLine = "\n*----------------------------------------------*\n"
+strHeaderLine = "\n----------------------------------------------\n"
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 def fetchHTML(alamatURL):
@@ -279,28 +279,35 @@ def getRowIndex(table, strSearchKey):
 	return rowIndex
 
 
-def getTOffline(table):
+def getTNonTunai(table):
 
 	soup = BeautifulSoup(str(table))
+	
 	rows = soup.findAll('tr')
+
 	numRows = getRowsNumber(table)
+
 	numCols = getColsNumber(table)
+
 	numRowsHead = getRowsHeadNumber(table)
 
 	#Initialize
-	TOffline = []
+
+	TNonTunai = []
 	
 	for i in range (0, numRows):
 
 		trs = BeautifulSoup(str(rows[i]))
+
 		tdcells = trs.findAll("td")
 		thcells = trs.findAll("th")
 
 		if tdcells:
 			strTID = tdcells[1].getText()
-			strLocation = tdcells[5].getText()
+			strLocation = tdcells[4].getText()
 			strLocation = cleanUpLocation(strLocation)
-			strArea = tdcells[7].getText()
+			strArea = tdcells[5].getText()
+			datLastTunai = tdcells[8].getText().strip()
 
 			if ("ATM CENTER" in strArea) or ("VENDOR" in strArea):
 				intCRO = 1
@@ -312,76 +319,76 @@ def getTOffline(table):
 			strCabang = tdcells[6].getText()
 			strKodeCabang = strCabang[:4]
 			strNamaCabang = strCabang[6:]
-			TOffline.append((strKodeCabang, namaCROUKO, intCRO, strArea, strLocation, strTID, strNamaCabang))
-
-	TOffline = sorted(TOffline, key=itemgetter(1, 3, 2), reverse = False)
-
-	return TOffline 
 
 
-def getTOfflineCabang(TOffline, branchCode):
+			TNonTunai.append((strKodeCabang, namaCROUKO, intCRO, strArea, strLocation, strTID, strNamaCabang, datLastTunai))
+			#TNonTunai       ((#0:strKodeCabang, #1:namaCROUKO, #2:intCRO, #3:strArea, #4:strLocation, #5:strTID, #6:strNamaCabang, #7:datLastTunai))
+
+	TNonTunai = sorted(TNonTunai, key=itemgetter(1, 3, 2), reverse = False)
+
+	return TNonTunai 
+
+
+def getTNonTunaiCabang(TNonTunai, branchCode):
 
 	#Initialize
 	msgBody = ""
 	
-	TOfflineKanca = []
-	TOfflineUKO = []
-	TOfflineCRO = []
+	TNonTunaiKanca = []
+	TNonTunaiUKO = []
+	TNonTunaiCRO = []
 
-	for i in range(0, len(TOffline)):
-		if TOffline[i][0] == branchCode.zfill(4):
-			strNamaCabang = cleanupNamaUker(TOffline[i][-1])
-			TOfflineKanca.append(TOffline[i])
+	for i in range(0, len(TNonTunai)):
+		if TNonTunai[i][0] == branchCode.zfill(4):
+			strNamaCabang = cleanupNamaUker(TNonTunai[i][6])
+			TNonTunaiKanca.append(TNonTunai[i])
 
-	for i in range(0, len(TOfflineKanca)):
-		if TOfflineKanca[i][2] == 0:
-			TID = TOfflineKanca[i][5]
-			TOfflineUKO.append((TOfflineKanca[i][3], TID, getLastTunai(TID)))
+	for i in range(0, len(TNonTunaiKanca)):
+		if TNonTunaiKanca[i][2] == 0:
+			TNonTunaiUKO.append((TNonTunaiKanca[i][3], TNonTunaiKanca[i][5]))
 
-	for i in range(0, len(TOfflineKanca)):
-		if TOfflineKanca[i][2] == 1:
-			TID = TOfflineKanca[i][5]
-			TOfflineCRO.append((TOfflineKanca[i][1], TOfflineKanca[i][4], TID, getLastTunai(TID)))
+	for i in range(0, len(TNonTunaiKanca)):
+		if TNonTunaiKanca[i][2] == 1:
+			TNonTunaiCRO.append((TNonTunaiKanca[i][1], TNonTunaiKanca[i][4], TNonTunaiKanca[i][5]))
 
-	if TOfflineUKO or TOfflineCRO:
-		msgBody = strHeaderLine +"ATM OFFLINE "+ strNamaCabang.upper() +timestamp+ strHeaderLine + msgBody + "\n"
+	if TNonTunaiUKO or TNonTunaiCRO:
+		msgBody = strHeaderLine +"ATM NON TUNAI "+ strNamaCabang.upper() +timestamp+ strHeaderLine + msgBody + "\n"
 	else:
 
-		msgBody = strHeaderLine +"ATM OFFLINE "+ branchCode +timestamp+ strHeaderLine + msgBody + "\nTidak ada ATM kategori ini di wilayah Anda!"
+		msgBody = strHeaderLine +"ATM NON TUNAI "+ branchCode +timestamp+ strHeaderLine + msgBody + "\nEXCELLENT WORK!\nALL ONLINE ATM IS READY TO DISPENSE MONEY!"
 
-	if TOfflineUKO:
+	if TNonTunaiUKO:
 		msgBody += "*[UKO]*\n"
-		for i in range(0, len(TOfflineUKO)):
-					msgBody += str(i+1)+" "+ str(TOfflineUKO[i][0])+", "+str(TOfflineUKO[i][1])+", "+durasiHinggaKini(str(TOfflineUKO[i][2]))+"\n"
+		for i in range(0, len(TNonTunaiUKO)):
+					msgBody += str(i+1)+" "+ str(TNonTunaiUKO[i][0])+", "+str(TNonTunaiUKO[i][1])+"\n"
 		msgBody += "\n"			
 
-	if TOfflineCRO:
+	if TNonTunaiCRO:
 		msgBody += "*[CRO]*\n"
-		for i in range(0, len(TOfflineCRO)):
-					msgBody += str(i+1)+" "+ str(TOfflineCRO[i][0]) +": "+str(TOfflineCRO[i][1])+", "+str(TOfflineCRO[i][2])+", "+durasiHinggaKini(str(TOfflineCRO[i][3]))+"\n"
+		for i in range(0, len(TNonTunaiCRO)):
+					msgBody += str(i+1)+" "+ str(TNonTunaiCRO[i][0]) +": "+str(TNonTunaiCRO[i][1])+", "+str(TNonTunaiCRO[i][2])+"\n"
 
 	return 	msgBody
 
 
-def getTOfflineCRO(TOffline, selectedCRO):
+def getTNonTunaiCRO(TNonTunai, selectedCRO):
 
 	#Initialize
 	msgBody = ""
 	seqNo = 0
 	counter = 0
-	TOfflineCRO = []
+	TNonTunaiCRO = []
 	arrCRO = ["BG", "G4S", "KEJAR", "SSI", "TAG"]
 
 	if selectedCRO == 0:
 
 		selectedCRO = "ALL"
-		strCRO = "[*ALL CRO*]"
+		strCRO = "*[ALL CRO]*"
 
-		for i in range(0, len(TOffline)):
-			if TOffline[i][2] == 1:
-				strNamaCabang = "*"+cleanupNamaUker(TOffline[i][-1])+"*"
-				TID = TOffline[i][5]
-				TOfflineCRO.append((TOffline[i][1], TOffline[i][4], TID, getLastTunai(TID)))
+		for i in range(0, len(TNonTunai)):
+			if TNonTunai[i][2] == 1:
+				strNamaCabang = cleanupNamaUker(TNonTunai[i][-1])
+				TNonTunaiCRO.append((TNonTunai[i][1], TNonTunai[i][4], TNonTunai[i][5], TNonTunai[i][7]))
 
 	elif selectedCRO in arrCRO:
 
@@ -389,103 +396,80 @@ def getTOfflineCRO(TOffline, selectedCRO):
 		arrCRO.append(selectedCRO)
 		strCRO = "*["+selectedCRO+"]*"
 	
-		for i in range(0, len(TOffline)):
+		for i in range(0, len(TNonTunai)):
 
-			if TOffline[i][1] == selectedCRO:
-				strNamaCabang = cleanupNamaUker(TOffline[i][-1])
-				TID = TOffline[i][1]
-				TOfflineCRO.append((TOffline[i][1], TOffline[i][4], TID, getLastTunai(TID)))
+			if TNonTunai[i][1] == selectedCRO:
+				strNamaCabang = cleanupNamaUker(TNonTunai[i][-1])
+				TNonTunaiCRO.append((TNonTunai[i][1], TNonTunai[i][4], TNonTunai[i][5], TNonTunai[i][7]))
 
-	if TOfflineCRO:
+	if TNonTunaiCRO:
 
 		msgBody += strCRO+"\n"
-		for i in range(0, len(TOfflineCRO)):
+		for i in range(0, len(TNonTunaiCRO)):
 
-			if TOfflineCRO[i-1][0] != TOfflineCRO[i][0]:
-				msgBody += "\n*[" + str(TOfflineCRO[i][0]) + "]*\n"
+			if TNonTunaiCRO[i-1][0] != TNonTunaiCRO[i][0]:
+				msgBody += "\n*[" + str(TNonTunaiCRO[i][0]) + "]*\n"
 				seqNo = 0
 
 			for j in range(0, len(arrCRO)):
 
-				if str(TOfflineCRO[i][0]) == arrCRO[j]:
+				if str(TNonTunaiCRO[i][0]) == arrCRO[j]:
 					seqNo += 1
 					counter += 1
-					msgBody += str(seqNo)+") "+ str(TOfflineCRO[i][1])+", "+str(TOfflineCRO[i][2])+", "+durasiHinggaKini(str(TOfflineCRO[i][3]))+"\n"
+					msgBody += str(seqNo)+") "+ str(TNonTunaiCRO[i][1])+", "+str(TNonTunaiCRO[i][2])+", "+str(TNonTunaiCRO[i][3]).replace("_"," ")+"\n"
 
-		msgBody += "\n"+regionName + "-[TOTAL OFFLINE CRO "+selectedCRO+"]: "+str(counter)
+		msgBody += "\n"+regionName + "-[TOTAL NONTUNAI CRO "+selectedCRO+"]: "+str(counter)
 
 	return 	msgBody
 
 
-def getTOfflineUKO(TOffline):
+def getTNonTunaiUKO(TNonTunai):
 
 	#Initialize
 	msgBody = ""
 	seqNo = 0
 	counter = 0
-	TOfflineUKO = []
+	TNonTunaiUKO = []
 
-	for i in range(0, len(TOffline)):
+	for i in range(0, len(TNonTunai)):
 	
-		if TOffline[i][2] == 0:
-			strNamaCabang = "*"+cleanupNamaUker(TOffline[i][-1])+"*"
-			TID = TOffline[i][5]
-			TOfflineUKO.append((strNamaCabang.upper(), TOffline[i][4], TID, getLastTunai(TID)))
+		if TNonTunai[i][2] == 0:
+			strNamaCabang = "*"+cleanupNamaUker(TNonTunai[i][6])+"*"
+			TNonTunaiUKO.append((strNamaCabang.upper(), TNonTunai[i][4], TNonTunai[i][5], TNonTunai[i][7]))
+			#TNonTunai       ((#0:strKodeCabang, #1:namaCROUKO, #2:intCRO, #3:strArea, #4:strLocation, #5:strTID, #6:strNamaCabang, #7:datLastTunai))
+	TNonTunaiUKO = sorted(TNonTunaiUKO, key=itemgetter(0), reverse = False)
 
-	TOfflineUKO = sorted(TOfflineUKO, key=itemgetter(0), reverse = False)
-
-	if TOfflineUKO:
+	if TNonTunaiUKO:
 	
 		msgBody += "*[UKO]*\n"
-		for i in range(0, len(TOfflineUKO)):
-			if TOfflineUKO[i-1][0] != TOfflineUKO[i][0]:
-				msgBody +=  "\n"+str(TOfflineUKO[i][0]) + "\n"
+		for i in range(0, len(TNonTunaiUKO)):
+			if TNonTunaiUKO[i-1][0] != TNonTunaiUKO[i][0]:
+				msgBody +=  "\n"+str(TNonTunaiUKO[i][0]) + "\n"
 				seqNo = 0
 
 			seqNo += 1
 			counter += 1
-			msgBody += str(seqNo)+") "+ str(TOfflineUKO[i][1])+", "+str(TOfflineUKO[i][2])+", "+durasiHinggaKini(str(TOfflineUKO[i][3]))+"\n"
+			msgBody += str(seqNo)+") "+ str(TNonTunaiUKO[i][1])+", "+str(TNonTunaiUKO[i][2])+", "+durasiHinggaKini(str(TNonTunaiUKO[i][3]).replace("_"," "))+"\n"
 
-		msgBody += "\n"+regionName + "-[TOTAL OFFLINE UKO]: "+str(counter)
-
-	return 	msgBody
-
-def getTOfflineACI(TOffline, selectedACI):
-	# Alfamart, Ceriamart, Indomart
-
-	msgBody = ""
-	seqNo = 0
-	counter = 0
-	TOfflineACI = []
-
-	for i in range(0, len(TOffline)):
-
-		if selectedACI in TOffline[i][4]:
-			seqNo += 1
-			strNamaCabang = "*"+cleanupNamaUker(TOffline[i][-1])+"*"
-			TID = TOffline[i][5]
-			strLocation = TOffline[i][4]
-			TOfflineACI.append((strNamaCabang.upper(), strLocation, TID, getLastTunai(TID)))
-
-	TOfflineACI = sorted(TOfflineACI, key=itemgetter(0), reverse = False)
-	seqNo = 0
-	if TOfflineACI:
-	
-		if len(TOfflineACI) == 1:
-			msgBody +=  "\n"+str(TOfflineACI[0][0]) + "\n"
-
-		for i in range(0, len(TOfflineACI)):
-			if TOfflineACI[i-1][0] != TOfflineACI[i][0]:
-				msgBody +=  "\n"+str(TOfflineACI[i][0]) + "\n"
-				seqNo = 0
-			seqNo += 1
-			counter += 1
-			msgBody += str(seqNo)+") "+ str(TOfflineACI[i][1])+", "+str(TOfflineACI[i][2])+", "+durasiHinggaKini(str(TOfflineACI[i][3]))+"\n"
-
-		msgBody += "\n"+regionName + "-[TOTAL OFFLINE "+selectedACI.upper()+"]: "+str(counter)
+		msgBody += "\n"+regionName + "-[TOTAL NONTUNAI UKO]: "+str(counter)
 
 	return 	msgBody
 
+def durasiHinggaKini(strDate):
+
+	from datetime import datetime
+	strDate = strDate.replace('_',' ')
+
+	if "-" in strDate:
+
+		format1 = '%Y-%m-%d %H:%M:%S'
+
+	elif "/" in strDate:
+
+		format1 = '%d/%m/%Y %H:%M'
+
+	span = datetime.now() - datetime.strptime(strDate, format1)
+	return ':'.join(str(span).split('.')[:1]).replace('days','hari')
 
 def cleanUpNamaCRO(strText):
 
@@ -502,28 +486,13 @@ def cleanUpNamaCRO(strText):
 	strText = strText.replace("9831-VENDOR CRO SSI MEDAN","SSI")
 	strText = strText.replace("9849-VENDOR CRO III KEJAR MEDAN","KEJAR")
 
-	if "BG" in strText:
-		strText = strText.replace(strText, "BG")
-
-	if "KEJAR" in strText:
-		strText = strText.replace(strText, "KEJAR")
-
-	if "SSI" in strText:
-		strText = strText.replace(strText, "SSI")
-
-	if "TAG" in strText:
-		strText = strText.replace(strText, "TAG")
-
-	if "G4S" in strText:
-		strText = strText.replace(strText, "G4S")
-
 	return strText.strip()
 
 def cleanupNamaUker(namaUker):
 
 
-	namaUker = namaUker.replace("JAKARTA","")
-	namaUker = namaUker.replace("Jakarta ","") 
+	namaUker = namaUker.replace("JAKARTA ","")
+	namaUker = namaUker.replace("Jakarta ","")
 	namaUker = namaUker.replace("JKT ","")
 	namaUker = namaUker.replace("KANCA ","")
 	namaUker = namaUker.replace("KC ","")
@@ -536,12 +505,8 @@ def cleanUpLocation(strLocation):
 	strLocation = strLocation.replace("INDOMARET","IDM")
 	strLocation = strLocation.replace("JAK 3","")
 	strLocation = strLocation.replace("JAKARTA 3","")
-	strLocation = strLocation.replace("JAKARTA 1","")
 	strLocation = strLocation.replace("JAKARTA3","")
-	strLocation = strLocation.replace("KANWIL 3","")
-	strLocation = strLocation.replace("JAKARTA","")
 	strLocation = strLocation.replace("JKT 3","")
-	strLocation = strLocation.replace("JKT","")
 	strLocation = strLocation.replace("PUBL","")
 	strLocation = strLocation.replace("G4S ","")
 	strLocation = strLocation.replace("TAG ","")
@@ -552,33 +517,6 @@ def cleanUpLocation(strLocation):
 
 	return strLocation
 
-def getLastTunai(TID):
-
-	alamatURL = "http://172.18.65.42/statusatm/viewatmdetail.pl?ATM_NUM="+ TID
-	table = getLargestTable(getTableList(fetchHTML(alamatURL)))
-
-	soup = BeautifulSoup(str(table))
-	rows = soup.findAll('tr')
-	numRows = getRowsNumber(table)
-	msgBody = ""
-	
-	for i in range (0, numRows):
-		trs = BeautifulSoup(str(rows[i]))
-		tdcells = trs.findAll("td")
-		if tdcells:
-			if "TUNAI" in tdcells[0].getText().upper() :
-					msgBody += tdcells[0].getText().upper()+": "+ tdcells[1].getText() +"\n"
-
-	return msgBody.replace("SUKSES TRX. TUNAI:","").strip()
-
-
-def durasiHinggaKini(strDate):
-
-	from datetime import datetime
-	format1 = '%d/%m/%Y %H:%M'
-	span = datetime.now() - datetime.strptime(strDate.replace('_',' '), format1)
-	return ':'.join(str(span).split('.')[:1]).replace('days','hari')
-
 
 
 msgBody =""
@@ -587,32 +525,17 @@ timestamp = "\nper "+ time.strftime("%d-%m-%Y pukul %H:%M")
 
 if len(sys.argv) > 0:
 
-	alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
+	alamatURL = "http://172.18.65.42/statusatm/viewbyupnontunai.pl?REGID="+regionID
 
 	try:
 		AREAID = sys.argv[1]
 
 		if AREAID.isdigit():
 
-			alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-			TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-			msgBody = getTOfflineCabang(TOffline, AREAID)
+			TNonTunai = getTNonTunai(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
+			msgBody = getTNonTunaiCabang(TNonTunai, AREAID)
+
 			if msgBody:	
-				msgBody = strHeaderLine +"ATM OFF (< 6 JAM) "+ AREAID.upper() + msgBody
-				print msgBody
-
-			alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-			TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-			msgBody = getTOfflineCabang(TOffline, AREAID)
-			if msgBody:
-				msgBody = strHeaderLine +"ATM OFF (> 6 JAM)  "+ AREAID.upper() + msgBody
-				print msgBody
-
-			alamatURL = "http://172.18.65.42/statusatm/viewbyoffline3kurang45.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-			TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-			msgBody = getTOfflineCabang(TOffline, AREAID)
-			if msgBody:
-				msgBody = strHeaderLine +"ATM OFF (> 1 HARI)  "+ AREAID.upper() + msgBody
 				print msgBody
 
 	
@@ -621,29 +544,12 @@ if len(sys.argv) > 0:
 			if AREAID.upper() == "UKO":
 
 				try:
-		
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-					msgBody = getTOfflineUKO(TOffline)
+
+					TNonTunai = getTNonTunai(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
+					msgBody = getTNonTunaiUKO(TNonTunai)
 
 					if msgBody:	
-						msgBody = strHeaderLine +"ATM OFF (< 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
-						print msgBody
-
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-					msgBody = getTOfflineUKO(TOffline)
-
-					if msgBody:	
-						msgBody = strHeaderLine +"ATM OFF (> 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
-						print msgBody
-
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline3kurang45.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-					msgBody = getTOfflineUKO(TOffline)
-
-					if msgBody:	
-						msgBody = strHeaderLine +"ATM OFF (> 1 HARI)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
+						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
 
 				except:
@@ -652,28 +558,12 @@ if len(sys.argv) > 0:
 			elif AREAID.upper() == "CRO":
 
 				try:
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-					msgBody = getTOfflineCRO(TOffline, 0)
+
+					TNonTunai = getTNonTunai(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
+					msgBody = getTNonTunaiCRO(TNonTunai, 0)
 
 					if msgBody:	
-						msgBody = strHeaderLine +"ATM OFF (< 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
-						print msgBody
-
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-					msgBody = getTOfflineCRO(TOffline, 0)
-
-					if msgBody:	
-						msgBody = strHeaderLine +"ATM OFF (> 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
-						print msgBody
-
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline3kurang45.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-					msgBody = getTOfflineCRO(TOffline, 0)
-
-					if msgBody:	
-						msgBody = strHeaderLine +"ATM OFF (> 1 HARI)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
+						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
 
 				except:
@@ -682,25 +572,12 @@ if len(sys.argv) > 0:
 			else:
 
 				try:
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-					msgBody = getTOfflineACI(TOffline, AREAID.upper())
-					if msgBody:	
-						msgBody = strHeaderLine +"ATM OFF (< 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
-						print msgBody
 
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-					msgBody = getTOfflineACI(TOffline, AREAID.upper())
-					if msgBody:	
-						msgBody = strHeaderLine +"ATM OFF (> 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
-						print msgBody
+					TNonTunai = getTNonTunai(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
+					msgBody = getTNonTunaiCRO(TNonTunai, AREAID.upper())
 
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline3kurang45.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
-					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
-					msgBody = getTOfflineACI(TOffline, AREAID.upper())
 					if msgBody:	
-						msgBody = strHeaderLine +"ATM OFF (> 1 HARI)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
+						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
 
 				except:
