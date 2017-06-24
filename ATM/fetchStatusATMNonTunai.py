@@ -2,9 +2,10 @@
 #---------------------------------------
 # fetchStatusATMNonTunai.py
 # (c) Jansen A. Simanullang, 11:15:55
-# 14 Januari 2016 09:04:11
+# @BSD City: 14 Januari 2016 09:04:11
 # 13 Agustus 2016 13:58:28 - 15:30, 16:33
 # 28 November 2016 14:36 # asterisks added
+# @Medan City: 24.06.2017
 # to be used with telegram-bot plugin
 #---------------------------------------
 # usage: fetchStatusATMNonTunai cro/uko/kode cabang
@@ -12,15 +13,16 @@
 #---------------------------------------
 
 from BeautifulSoup import BeautifulSoup
-import sys, time
+import os, sys, time
 import urllib2
 from operator import itemgetter
-
-atmproIP = "172.18.65.42"
-regionName = "MEDAN"
-regionID="15"
-regionID="02"
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
+from loadConfig import readConfig
+regionID = readConfig("Atmpro")['regionid']
+regionName = readConfig("Atmpro")['regionname']
 strHeaderLine = "\n----------------------------------------------\n"
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 def fetchHTML(alamatURL):
 	# fungsi ini hanya untuk mengambil stream string HTML dari alamat URL yang akan dimonitor
