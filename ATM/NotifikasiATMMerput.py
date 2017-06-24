@@ -13,9 +13,12 @@ import os, sys, time, ConfigParser
 import urllib, urllib2, pymysql
 from operator import itemgetter
 from BeautifulSoup import BeautifulSoup
-
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
+configPath = scriptDirectory+ "conf/config.ini"
+configPath = configPath.replace("/","//")
 Config = ConfigParser.ConfigParser()
-Config.read("conf/config.ini")
+Config.read(configPath)
 def readConfig(section):
     dict1 = {}
     options = Config.options(section)
@@ -29,10 +32,11 @@ def readConfig(section):
             dict1[option] = None
     return dict1
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-atmproIP = readConfig("ATMPro")['ipaddress']
-regionID = readConfig("ATMPro")['regionid']
-regionName = readConfig("ATMPro")['regionname']
+atmproIP = readConfig("Atmpro")['ipaddress']
+regionID = readConfig("Atmpro")['regionid']
+regionName = readConfig("Atmpro")['regionname']
 secretKey = readConfig("Telegram")['token']
+Telebot = readConfig("Telegram")['username']
 textLimit = int(readConfig("Telegram")['textlimit'])
 behindProxy=int(readConfig("Internet")['behindproxy'])
 dbhost = readConfig("Mysql")['host']
@@ -41,7 +45,6 @@ dbuser = readConfig("Mysql")['user']
 dbpass = readConfig("Mysql")['pass']
 dbase = readConfig("Mysql")['dbase']
 strHeader = "\n----------------------------------------------\n"
-scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 def fetchHTML(alamatURL):
@@ -521,7 +524,7 @@ def NotifikasiATM():
 
 	for key,value in dictMsgBody.iteritems():
 	
-		conn = pymysql.connect(host=dbhost, port=dbport, user=dbuser, passwd=dbpass, db=dbase)
+		conn = pymysql.connect(host=dbhost, port=int(dbport), user=dbuser, passwd=dbpass, db=dbase)
 		cur = conn.cursor()
 		cur.execute('select telegram_id from notif1 where branchcode like "'+key+'" and active="1"')
 
