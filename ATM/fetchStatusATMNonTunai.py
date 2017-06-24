@@ -17,7 +17,9 @@ import urllib2
 from operator import itemgetter
 
 atmproIP = "172.18.65.42"
-regionName = "JAKARTA III"
+regionName = "MEDAN"
+regionID="15"
+regionID="02"
 strHeaderLine = "\n----------------------------------------------\n"
 
 def fetchHTML(alamatURL):
@@ -303,8 +305,9 @@ def getTNonTunai(table):
 			strLocation = tdcells[4].getText()
 			strLocation = cleanUpLocation(strLocation)
 			strArea = tdcells[5].getText()
+			datLastTunai = tdcells[8].getText().strip()
 
-			if "ATM CENTER" in strArea:
+			if ("ATM CENTER" in strArea) or ("VENDOR" in strArea):
 				intCRO = 1
 				namaCROUKO = cleanUpNamaCRO(strArea)
 			else:
@@ -315,7 +318,9 @@ def getTNonTunai(table):
 			strKodeCabang = strCabang[:4]
 			strNamaCabang = strCabang[6:]
 
-			TNonTunai.append((strKodeCabang, namaCROUKO, intCRO, strArea, strLocation, strTID, strNamaCabang))
+
+			TNonTunai.append((strKodeCabang, namaCROUKO, intCRO, strArea, strLocation, strTID, strNamaCabang, datLastTunai))
+			#TNonTunai       ((#0:strKodeCabang, #1:namaCROUKO, #2:intCRO, #3:strArea, #4:strLocation, #5:strTID, #6:strNamaCabang, #7:datLastTunai))
 
 	TNonTunai = sorted(TNonTunai, key=itemgetter(1, 3, 2), reverse = False)
 
@@ -381,7 +386,7 @@ def getTNonTunaiCRO(TNonTunai, selectedCRO):
 		for i in range(0, len(TNonTunai)):
 			if TNonTunai[i][2] == 1:
 				strNamaCabang = cleanupNamaUker(TNonTunai[i][-1])
-				TNonTunaiCRO.append((TNonTunai[i][1], TNonTunai[i][4], TNonTunai[i][5]))
+				TNonTunaiCRO.append((TNonTunai[i][1], TNonTunai[i][4], TNonTunai[i][5], TNonTunai[i][7]))
 
 	elif selectedCRO in arrCRO:
 
@@ -393,7 +398,7 @@ def getTNonTunaiCRO(TNonTunai, selectedCRO):
 
 			if TNonTunai[i][1] == selectedCRO:
 				strNamaCabang = cleanupNamaUker(TNonTunai[i][-1])
-				TNonTunaiCRO.append((TNonTunai[i][1], TNonTunai[i][4], TNonTunai[i][5]))
+				TNonTunaiCRO.append((TNonTunai[i][1], TNonTunai[i][4], TNonTunai[i][5], TNonTunai[i][7]))
 
 	if TNonTunaiCRO:
 
@@ -409,7 +414,7 @@ def getTNonTunaiCRO(TNonTunai, selectedCRO):
 				if str(TNonTunaiCRO[i][0]) == arrCRO[j]:
 					seqNo += 1
 					counter += 1
-					msgBody += str(seqNo)+") "+ str(TNonTunaiCRO[i][1])+", "+str(TNonTunaiCRO[i][2])+"\n"
+					msgBody += str(seqNo)+") "+ str(TNonTunaiCRO[i][1])+", "+str(TNonTunaiCRO[i][2])+", "+str(TNonTunaiCRO[i][3]).replace("_"," ")+"\n"
 
 		msgBody += "\n"+regionName + "-[TOTAL NONTUNAI CRO "+selectedCRO+"]: "+str(counter)
 
@@ -427,9 +432,9 @@ def getTNonTunaiUKO(TNonTunai):
 	for i in range(0, len(TNonTunai)):
 	
 		if TNonTunai[i][2] == 0:
-			strNamaCabang = "*"+cleanupNamaUker(TNonTunai[i][-1])+"*"
-			TNonTunaiUKO.append((strNamaCabang.upper(), TNonTunai[i][4], TNonTunai[i][5]))
-
+			strNamaCabang = "*"+cleanupNamaUker(TNonTunai[i][6])+"*"
+			TNonTunaiUKO.append((strNamaCabang.upper(), TNonTunai[i][4], TNonTunai[i][5], TNonTunai[i][7]))
+			#TNonTunai       ((#0:strKodeCabang, #1:namaCROUKO, #2:intCRO, #3:strArea, #4:strLocation, #5:strTID, #6:strNamaCabang, #7:datLastTunai))
 	TNonTunaiUKO = sorted(TNonTunaiUKO, key=itemgetter(0), reverse = False)
 
 	if TNonTunaiUKO:
@@ -442,12 +447,27 @@ def getTNonTunaiUKO(TNonTunai):
 
 			seqNo += 1
 			counter += 1
-			msgBody += str(seqNo)+") "+ str(TNonTunaiUKO[i][1])+", "+str(TNonTunaiUKO[i][2])+"\n"
+			msgBody += str(seqNo)+") "+ str(TNonTunaiUKO[i][1])+", "+str(TNonTunaiUKO[i][2])+", "+durasiHinggaKini(str(TNonTunaiUKO[i][3]).replace("_"," "))+"\n"
 
 		msgBody += "\n"+regionName + "-[TOTAL NONTUNAI UKO]: "+str(counter)
 
 	return 	msgBody
 
+def durasiHinggaKini(strDate):
+
+	from datetime import datetime
+	strDate = strDate.replace('_',' ')
+
+	if "-" in strDate:
+
+		format1 = '%Y-%m-%d %H:%M:%S'
+
+	elif "/" in strDate:
+
+		format1 = '%d/%m/%Y %H:%M'
+
+	span = datetime.now() - datetime.strptime(strDate, format1)
+	return ':'.join(str(span).split('.')[:1]).replace('days','hari')
 
 def cleanUpNamaCRO(strText):
 
@@ -459,6 +479,10 @@ def cleanUpNamaCRO(strText):
 	strText = strText.replace("BG II","BG")
 	strText = strText.replace("SWADARMA SARANA","SSI")
 	strText = strText.replace("SECURICOR","G4S")
+	strText = strText.replace("VENDOR CRO II BG MEDAN","BG")
+	strText = strText.replace("9842-BG","BG")
+	strText = strText.replace("9831-VENDOR CRO SSI MEDAN","SSI")
+	strText = strText.replace("9849-VENDOR CRO III KEJAR MEDAN","KEJAR")
 
 	return strText.strip()
 
@@ -499,7 +523,7 @@ timestamp = "*\nper "+ time.strftime("%d-%m-%Y pukul %H:%M")
 
 if len(sys.argv) > 0:
 
-	alamatURL = "http://172.18.65.42/statusatm/viewbyupnontunai.pl?REGID=15"
+	alamatURL = "http://172.18.65.42/statusatm/viewbyupnontunai.pl?REGID="+regionID
 
 	try:
 		AREAID = sys.argv[1]
