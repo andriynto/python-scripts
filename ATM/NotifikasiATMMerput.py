@@ -15,25 +15,11 @@ from operator import itemgetter
 from BeautifulSoup import BeautifulSoup
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
-configPath = scriptDirectory+ "conf/config.ini"
-configPath = configPath.replace("/","//")
-Config = ConfigParser.ConfigParser()
-Config.read(configPath)
-def readConfig(section):
-    dict1 = {}
-    options = Config.options(section)
-    for option in options:
-        try:
-            dict1[option] = Config.get(section, option)
-            if dict1[option] == -1:
-                DebugPrint("skip: %s" % option)
-        except:
-            print("exception on %s!" % option)
-            dict1[option] = None
-    return dict1
-#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+from loadConfig import readConfig
 atmproIP = readConfig("Atmpro")['ipaddress']
+print "atmproIP = ", atmproIP
 regionID = readConfig("Atmpro")['regionid']
+print "regionID = ", regionID
 regionName = readConfig("Atmpro")['regionname']
 secretKey = readConfig("Telegram")['token']
 Telebot = readConfig("Telegram")['username']
@@ -44,7 +30,6 @@ dbport = int(readConfig("Mysql")['port'])
 dbuser = readConfig("Mysql")['user']
 dbpass = readConfig("Mysql")['pass']
 dbase = readConfig("Mysql")['dbase']
-strHeader = "\n----------------------------------------------\n"
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 def fetchHTML(alamatURL):
