@@ -3,7 +3,7 @@
 #---------------------------------------
 # NotifikasiTelegramATM.py
 # (c) Jansen A. Simanullang
-# 06.10.2015 - 23.06.2017
+# 06.10.2015 - 08.03.2017 14:04
 # to be used with cron and MariaDB
 # @Medan City, Juni 2017
 #---------------------------------------
@@ -25,9 +25,12 @@ import urllib, urllib2, pymysql
 from operator import itemgetter
 from urllib import urlopen
 from BeautifulSoup import BeautifulSoup
-
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
+configPath = scriptDirectory+ "conf/config.ini"
+configPath = configPath.replace("/","//")
 Config = ConfigParser.ConfigParser()
-Config.read("conf/config.ini")
+Config.read(configPath)
 def readConfig(section):
     dict1 = {}
     options = Config.options(section)
@@ -41,10 +44,11 @@ def readConfig(section):
             dict1[option] = None
     return dict1
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-atmproIP = readConfig("ATMPro")['ipaddress']
-regionID = readConfig("ATMPro")['regionid']
-regionName = readConfig("ATMPro")['regionname']
+atmproIP = readConfig("Atmpro")['ipaddress']
+regionID = readConfig("Atmpro")['regionid']
+regionName = readConfig("Atmpro")['regionname']
 secretKey = readConfig("Telegram")['token']
+Telebot = readConfig("Telegram")['username']
 textLimit = int(readConfig("Telegram")['textlimit'])
 behindProxy=int(readConfig("Internet")['behindproxy'])
 dbhost = readConfig("Mysql")['host']
@@ -53,7 +57,6 @@ dbuser = readConfig("Mysql")['user']
 dbpass = readConfig("Mysql")['pass']
 dbase = readConfig("Mysql")['dbase']
 strHeader = "\n----------------------------------------------\n"
-scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 asciiArt="""
@@ -1392,7 +1395,7 @@ def NotifikasiATM():
 
 		strNamaFile = prepareTextFile(arrBranchCode[i], strData)
 
-		conn = pymysql.connect(host=dbhost, port=dbport, user=dbuser, passwd=dbpass, db=dbase)
+		conn = pymysql.connect(host=dbhost, port=int(dbport), user=dbuser, passwd=dbpass, db=dbase)
 
 		cur = conn.cursor()
 
@@ -1418,8 +1421,10 @@ def NotifikasiATM():
 
 
 			# sending using @jak3bot
+			
+			#pesanSponsor = "\nSilakan cek status ATM dengan mengirimkan pesan:\n!status atm [terminal ID]\nke "+Telebot
 
-			strText = readTextFile(strNamaFile)
+			strText = readTextFile(strNamaFile) #+ pesanSponsor
 
 			print "\n--------------------------------------------------\n"
 
