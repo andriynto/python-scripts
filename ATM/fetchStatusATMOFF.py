@@ -2,11 +2,9 @@
 #---------------------------------------
 # fetchStatusATMOFF.py
 # (c) Jansen A. Simanullang, 11:15:55
-# 14 Januari 2016 09:04:11
-# 13 Agustus 2016 13:58:28 - 15:30, 16:33
-# 15 Agustus 2016 20:46 detail durasi hingga kini
-# 20.08.2016 16:08
-# 22.11.2016 15:48 * asterisk
+# @BSD CITY: 14 Januari 2016 09:04:11 - 
+# 22.11.2016 15:48 
+# @MEDAN CITY: 24.06.2017
 # to be used with telegram-bot plugin
 #---------------------------------------
 # usage: fetchStatusATMOFF cro/uko/kode cabang
@@ -14,13 +12,17 @@
 #---------------------------------------
 
 from BeautifulSoup import BeautifulSoup
-import sys, time
+import os, sys, time
 import urllib2
 from operator import itemgetter
 
-atmproIP = "172.18.65.42"
-regionName = "JAKARTA III"
-strHeaderLine = "\n----------------------------------------------\n"
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
+from loadConfig import readConfig
+regionID = readConfig("Atmpro")['regionid'].upper()
+regionName = readConfig("Atmpro")['regionname']
+strHeaderLine = "\n*----------------------------------------------*\n"
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 def fetchHTML(alamatURL):
 	# fungsi ini hanya untuk mengambil stream string HTML dari alamat URL yang akan dimonitor
@@ -300,7 +302,7 @@ def getTOffline(table):
 			strLocation = cleanUpLocation(strLocation)
 			strArea = tdcells[7].getText()
 
-			if "ATM CENTER" in strArea:
+			if ("ATM CENTER" in strArea) or ("VENDOR" in strArea):
 				intCRO = 1
 				namaCROUKO = cleanUpNamaCRO(strArea)
 			else:
@@ -373,7 +375,7 @@ def getTOfflineCRO(TOffline, selectedCRO):
 	if selectedCRO == 0:
 
 		selectedCRO = "ALL"
-		strCRO = "[ALL CRO]"
+		strCRO = "[*ALL CRO*]"
 
 		for i in range(0, len(TOffline)):
 			if TOffline[i][2] == 1:
@@ -495,6 +497,25 @@ def cleanUpNamaCRO(strText):
 	strText = strText.replace("BG II","BG")
 	strText = strText.replace("SWADARMA SARANA","SSI")
 	strText = strText.replace("SECURICOR","G4S")
+	strText = strText.replace("VENDOR CRO II BG MEDAN","BG")
+	strText = strText.replace("9842-BG","BG")
+	strText = strText.replace("9831-VENDOR CRO SSI MEDAN","SSI")
+	strText = strText.replace("9849-VENDOR CRO III KEJAR MEDAN","KEJAR")
+
+	if "BG" in strText:
+		strText = strText.replace(strText, "BG")
+
+	if "KEJAR" in strText:
+		strText = strText.replace(strText, "KEJAR")
+
+	if "SSI" in strText:
+		strText = strText.replace(strText, "SSI")
+
+	if "TAG" in strText:
+		strText = strText.replace(strText, "TAG")
+
+	if "G4S" in strText:
+		strText = strText.replace(strText, "G4S")
 
 	return strText.strip()
 
@@ -566,25 +587,32 @@ timestamp = "\nper "+ time.strftime("%d-%m-%Y pukul %H:%M")
 
 if len(sys.argv) > 0:
 
-	alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=15&ERROR=DOWN_ST"
+	alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
 
 	try:
 		AREAID = sys.argv[1]
 
 		if AREAID.isdigit():
 
-			alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=15&ERROR=DOWN_ST"
+			alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
 			TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
 			msgBody = getTOfflineCabang(TOffline, AREAID)
 			if msgBody:	
 				msgBody = strHeaderLine +"ATM OFF (< 6 JAM) "+ AREAID.upper() + msgBody
 				print msgBody
 
-			alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=15&ERROR=DOWN_ST"
+			alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
 			TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
 			msgBody = getTOfflineCabang(TOffline, AREAID)
 			if msgBody:
 				msgBody = strHeaderLine +"ATM OFF (> 6 JAM)  "+ AREAID.upper() + msgBody
+				print msgBody
+
+			alamatURL = "http://172.18.65.42/statusatm/viewbyoffline3kurang45.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
+			TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
+			msgBody = getTOfflineCabang(TOffline, AREAID)
+			if msgBody:
+				msgBody = strHeaderLine +"ATM OFF (> 1 HARI)  "+ AREAID.upper() + msgBody
 				print msgBody
 
 	
@@ -594,7 +622,7 @@ if len(sys.argv) > 0:
 
 				try:
 		
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=15&ERROR=DOWN_ST"
+					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
 					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
 					msgBody = getTOfflineUKO(TOffline)
 
@@ -602,12 +630,20 @@ if len(sys.argv) > 0:
 						msgBody = strHeaderLine +"ATM OFF (< 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
 
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=15&ERROR=DOWN_ST"
+					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
 					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
 					msgBody = getTOfflineUKO(TOffline)
 
 					if msgBody:	
 						msgBody = strHeaderLine +"ATM OFF (> 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
+						print msgBody
+
+					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline3kurang45.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
+					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
+					msgBody = getTOfflineUKO(TOffline)
+
+					if msgBody:	
+						msgBody = strHeaderLine +"ATM OFF (> 1 HARI)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
 
 				except:
@@ -616,7 +652,7 @@ if len(sys.argv) > 0:
 			elif AREAID.upper() == "CRO":
 
 				try:
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=15&ERROR=DOWN_ST"
+					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
 					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
 					msgBody = getTOfflineCRO(TOffline, 0)
 
@@ -624,12 +660,20 @@ if len(sys.argv) > 0:
 						msgBody = strHeaderLine +"ATM OFF (< 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
 
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=15&ERROR=DOWN_ST"
+					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
 					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
 					msgBody = getTOfflineCRO(TOffline, 0)
 
 					if msgBody:	
 						msgBody = strHeaderLine +"ATM OFF (> 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
+						print msgBody
+
+					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline3kurang45.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
+					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
+					msgBody = getTOfflineCRO(TOffline, 0)
+
+					if msgBody:	
+						msgBody = strHeaderLine +"ATM OFF (> 1 HARI)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
 
 				except:
@@ -638,18 +682,25 @@ if len(sys.argv) > 0:
 			else:
 
 				try:
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=15&ERROR=DOWN_ST"
+					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
 					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
 					msgBody = getTOfflineACI(TOffline, AREAID.upper())
 					if msgBody:	
 						msgBody = strHeaderLine +"ATM OFF (< 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
 
-					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=15&ERROR=DOWN_ST"
+					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline2.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
 					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
 					msgBody = getTOfflineACI(TOffline, AREAID.upper())
 					if msgBody:	
 						msgBody = strHeaderLine +"ATM OFF (> 6 JAM)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
+						print msgBody
+
+					alamatURL = "http://172.18.65.42/statusatm/viewbyoffline3kurang45.pl?REGID=" + regionID + "&ERROR=DOWN_ST"
+					TOffline = getTOffline(table=getWidestTable(getTableList(fetchHTML(alamatURL))))
+					msgBody = getTOfflineACI(TOffline, AREAID.upper())
+					if msgBody:	
+						msgBody = strHeaderLine +"ATM OFF (> 1 HARI)  "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
 
 				except:
