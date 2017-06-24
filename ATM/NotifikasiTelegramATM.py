@@ -3,23 +3,20 @@
 #---------------------------------------
 # NotifikasiTelegramATM.py
 # (c) Jansen A. Simanullang
-# 06.10.2015 - 08.03.2017 14:04
+# @BSD City, 06.10.2015 - 08.03.2017 14:04
 # to be used with cron and MariaDB
 # @Medan City, Juni 2017
 #---------------------------------------
 # Python usage:
 # NotifikasiTelegramATM
 #---------------------------------------
-
 import smtplib
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 from email.MIMEImage import MIMEImage
-
 #---------------------------------------
 lastEdit = "Juni 2017"
 #---------------------------------------
-
 import os, sys, time, ConfigParser
 import urllib, urllib2, pymysql
 from operator import itemgetter
@@ -27,25 +24,11 @@ from urllib import urlopen
 from BeautifulSoup import BeautifulSoup
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
-configPath = scriptDirectory+ "conf/config.ini"
-configPath = configPath.replace("/","//")
-Config = ConfigParser.ConfigParser()
-Config.read(configPath)
-def readConfig(section):
-    dict1 = {}
-    options = Config.options(section)
-    for option in options:
-        try:
-            dict1[option] = Config.get(section, option)
-            if dict1[option] == -1:
-                DebugPrint("skip: %s" % option)
-        except:
-            print("exception on %s!" % option)
-            dict1[option] = None
-    return dict1
-#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+from loadConfig import readConfig
 atmproIP = readConfig("Atmpro")['ipaddress']
+print "atmproIP = ", atmproIP
 regionID = readConfig("Atmpro")['regionid']
+print "regionID = ", regionID
 regionName = readConfig("Atmpro")['regionname']
 secretKey = readConfig("Telegram")['token']
 Telebot = readConfig("Telegram")['username']
@@ -56,7 +39,6 @@ dbport = int(readConfig("Mysql")['port'])
 dbuser = readConfig("Mysql")['user']
 dbpass = readConfig("Mysql")['pass']
 dbase = readConfig("Mysql")['dbase']
-strHeader = "\n----------------------------------------------\n"
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 asciiArt="""
@@ -1426,7 +1408,7 @@ def NotifikasiATM():
 
 			strText = readTextFile(strNamaFile) #+ pesanSponsor
 
-			print "\n--------------------------------------------------\n"
+			print "\n------------------------------------------\n"
 
 
 			#print arrBranchName[i]+"--->: "+ telegram_name + "            \r"
