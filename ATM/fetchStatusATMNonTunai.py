@@ -520,6 +520,9 @@ def cleanUpLocation(strLocation):
 	strLocation = strLocation.replace("SSI ","")
 	strLocation = strLocation.replace("CRO ","")
 	strLocation = strLocation.replace("-","")
+	strLocation = strLocation.replace("MEDAN ","")
+	strLocation = strLocation.replace("MDN ","")
+	strLocation = strLocation.replace("UNIT ","U ")
 	strLocation = strLocation.strip()
 
 	return strLocation
@@ -557,7 +560,7 @@ if len(sys.argv) > 0:
 
 					if msgBody:	
 						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + "* - "+regionName+ timestamp+ strHeaderLine + msgBody
-						print msgBody.replace("**","").replace("MEDAN ","").replace("MDN ","").replace("UNIT ","U ")
+						print msgBody.replace("**","") # double asterisk mark ("**") due to orphaned TID
 
 				except:
 					print "Ada kesalahan."
@@ -571,7 +574,7 @@ if len(sys.argv) > 0:
 
 					if msgBody:	
 						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + "* - "+regionName+ timestamp+ strHeaderLine + msgBody
-						print msgBody.replace("MEDAN ","").replace("MDN ","")
+						print msgBody
 
 				except:
 					print "Ada kesalahan."
