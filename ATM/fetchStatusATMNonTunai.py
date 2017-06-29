@@ -443,7 +443,7 @@ def getTNonTunaiUKO(TNonTunai):
 	TNonTunaiUKO = sorted(TNonTunaiUKO, key=itemgetter(0), reverse = False)
 
 	if TNonTunaiUKO:
-	
+		TNonTunaiUKO = sorted(TNonTunaiUKO, key=itemgetter(0,3), reverse = False)
 		msgBody += "*[UKO]*\n"
 		for i in range(0, len(TNonTunaiUKO)):
 			if TNonTunaiUKO[i-1][0] != TNonTunaiUKO[i][0]:
@@ -452,7 +452,7 @@ def getTNonTunaiUKO(TNonTunai):
 
 			seqNo += 1
 			counter += 1
-			msgBody += str(seqNo)+") "+ str(TNonTunaiUKO[i][1])+", "+str(TNonTunaiUKO[i][2])+", "+durasiLastTunai(str(TNonTunaiUKO[i][3]).replace("_"," "))+"\n"
+			msgBody += str(seqNo)+") "+ str(TNonTunaiUKO[i][1])+", "+str(TNonTunaiUKO[i][2])+", "+durasiLastTunai(str(TNonTunaiUKO[i][3]))+"\n"
 
 		msgBody += "\n"+regionName + "-[TOTAL NONTUNAI UKO]: "+str(counter)
 
