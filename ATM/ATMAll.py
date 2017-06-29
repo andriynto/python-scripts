@@ -2,12 +2,8 @@
 #---------------------------------------
 # ATMAll.py
 # (c) Jansen A. Simanullang, 01.08.2016
-# 11.08.2016 15:38
-# 20.08.2016 16:04
-# 10.12.2016 geser dari 26 ke 29
-# 13.12.2016 tambah OFF6
-# 20.01.2017 tambah PINGOK
-# 21.03.2017
+# @BSD CITY: 11.08.2016 15:38
+# @Medan City: 29.06.2017
 #---------------------------------------
 # usage: python ATMAll.py
 #---------------------------------------
@@ -16,11 +12,14 @@ import os, requests, time, urlparse, sys
 import urllib2, pdfkit, xlwt, xlutils
 from operator import itemgetter
 from xlwt import *
-
-#---------------------------------------
-# CONFIGURABLE PARAMETER
-#---------------------------------------
-RegionName = 'JAKARTA III'
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
+from loadConfig import readConfig
+regionID = readConfig("Atmpro")['regionid']
+regionName = readConfig("Atmpro")['regionname']
+jumlahKanca=24
+strHeaderLine = "\n----------------------------------------------\n"
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #---------------------------------------
 scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + os.sep
 
@@ -31,7 +30,7 @@ def welcomeScreen():
 	else:
 		os.system("cls")
 
-	print "TABULAR ATM PROBLEM, UTILITY & AVAILABILITY \n\n\n"
+	#print "TABULAR ATM RELIABILITY, UTILITY & AVAILABILITY \n\n\n"
 
 
 def fetchHTML(alamatURL):
@@ -253,103 +252,45 @@ def getTableContents(table):
 	rows = soup.findAll('tr')
 	#print len(rows)
 	strHTMLTableContents = ""
-	TProblem = []
+	TReliability = []
 
 	# RANKING PROBLEM ATM
-	print "\n# RANKING PROBLEM ATM\n"
+	#print "\n# RANKING RELIABILITY ATM\n"
 
 	for i in range (2, numRows-1):
 
 		trs = BeautifulSoup(str(rows[i]))
 	
 		tdcells = trs.findAll("td")
-		#print len(tdcells)
+
 		kodeCabang = tdcells[1].getText()
 
 		dText = tdcells[2].getText()
 
 		namaCabang = cleanupNamaUker(dText.upper())
 		#---------------------------------------
-		textNOPG = tdcells[6].getText()
-		if textNOPG:
-			NOPG = int(tdcells[6].getText()) 
+		textATM = tdcells[3].getText()
+		if (textATM) != '':
+			ATM = int(tdcells[3].getText()) 
 		else:			
-			NOPG = 0
-			#print "NOPG NIHIL"
+			ATM = 0
 		#---------------------------------------
-		textNOPNG = tdcells[7].getText()
-		if textNOPNG:
-			NOPNG = int(tdcells[7].getText()) 
-		else:
-			NOPNG = 0
-			#print "NOPNG NIHIL"
-		#---------------------------------------
-		NOP = NOPG + NOPNG
-		#---------------------------------------
-		textRSKG = tdcells[8].getText()
-		if textRSKG:
-			RSKG = int(tdcells[8].getText()) 
+		textRelia = tdcells[4].getText()
+		if (textRelia) != '':
+			RELIA = float(tdcells[4].getText()) 
 		else:			
-			RSKG = 0
-			#print "RSKG NIHIL"
-		#---------------------------------------
-		textRSKNG = tdcells[9].getText()
-		if textRSKNG:
-			RSKNG = int(tdcells[9].getText()) 
-		else:			
-			RSKNG = 0
-			#print "RSKNG NIHIL"
-		#---------------------------------------
-		RSK = RSKG + RSKNG
-		#---------------------------------------
-		textPROBOPS = tdcells[10].getText()
-		if textPROBOPS:
-			PROBOPS = int(tdcells[10].getText()) 
-		else:			
-			PROBOPS = 0
-			#print "PROBOPS NIHIL"
-		#---------------------------------------
-		textOOS= tdcells[14].getText()
-		if textOOS:
-			OOS = int(tdcells[14].getText()) 
-		else:			
-			OOS = 0
-			#print "OOS NIHIL"
-		#---------------------------------------
-		textOFF = tdcells[15].getText()
-		if textOFF:
-			OFF = int(tdcells[15].getText()) 
-		else:			
-			OFF = 0
-			#print "OFF NIHIL"
+			RELIA = 0
 		#---------------------------------------
 
-		textOF6 = tdcells[16].getText()
-		if textOF6:
-			OF6 = int(tdcells[16].getText()) 
-		else:			
-			OF6 = 0
-			#print "OFF NIHIL"
-		#---------------------------------------
-		
-		textPINGOK = tdcells[17].getText()
-		if textPINGOK:
-			PINGOK = int(tdcells[17].getText()) 
-		else:			
-			PINGOK = 0
-			#print "PING OK NIHIL"
-		#---------------------------------------
-		PROB = NOP + RSK + PROBOPS + OOS + OFF + OF6 + PINGOK
 
-		#print kodeCabang, namaCabang, NOP, RSK, PROBOPS, OOS, OFF, PROB
+		#print kodeCabang, namaCabang, AVAIL
 
-		TProblem.append((kodeCabang, namaCabang, NOP, RSK, PROBOPS, OOS, OFF, OF6, PINGOK, PROB))
-
-		TProblem = sorted(TProblem, key=itemgetter(9, 1), reverse = False)
+		TReliability.append((kodeCabang, namaCabang, ATM, RELIA))
+		TReliability = sorted(TReliability, key=itemgetter(3, 2, 1), reverse = True)
 
 
 	# RANKING UTILITY ATM
-	print "\n# RANKING UTILITY ATM\n"
+	#print "\n# RANKING UTILITY ATM\n"
 	TUtility = []
 
 	for i in range (2, numRows-1):
@@ -364,33 +305,38 @@ def getTableContents(table):
 
 		namaCabang = cleanupNamaUker(dText.upper())
 		#---------------------------------------
-		textUP = tdcells[11].getText()
+		textUP = tdcells[12].getText()
 		if (textUP) != '':
-			UP = int(tdcells[11].getText()) 
+			UP = int(tdcells[12].getText()) 
 		else:			
 			UP = 0
 		#---------------------------------------
-		textTunai = tdcells[12].getText()
+		textTunai = tdcells[13].getText()
 		if (textTunai) != '':
-			TUNAI = int(tdcells[12].getText()) 
+			TUNAI = int(tdcells[13].getText()) 
 		else:			
 			TUNAI = 0
 		#---------------------------------------
-		textNonTunai = tdcells[13].getText()
+		textNonTunai = tdcells[14].getText()
 		if (textNonTunai) != '':
-			NONTUNAI = int(tdcells[13].getText()) 
+			NONTUNAI = int(tdcells[14].getText()) 
 		else:			
 			NONTUNAI = 0
 		#---------------------------------------
-		PERCENT = float(TUNAI/float(UP)*100)
+		textUtil = tdcells[5].getText()
+		if (textUtil) != '':
+			UTILITY = float(tdcells[5].getText()) 
+		else:			
+			UTILITY = 0
+		#---------------------------------------
 		#print "{0:.0f}".format(PERCENT), NONTUNAI, ATM 
 
-		TUtility.append((kodeCabang, namaCabang, UP, TUNAI, NONTUNAI, float("{0:.2}".format(PERCENT))))
+		TUtility.append((kodeCabang, namaCabang, UP, TUNAI, NONTUNAI, UTILITY))
 		TUtility = sorted(TUtility, key=itemgetter(5, 1), reverse = True)
 
 
 	# RANKING AVAILABILITY ATM
-	print "\n# RANKING AVAILABILITY ATM\n"
+	#print "\n# RANKING AVAILABILITY ATM\n"
 	TAvailability = []
 
 	for i in range (2, numRows-1):
@@ -411,9 +357,9 @@ def getTableContents(table):
 		else:			
 			ATM = 0
 		#---------------------------------------
-		textAvail = tdcells[37].getText()
+		textAvail = tdcells[6].getText()
 		if (textAvail) != '':
-			AVAIL = float(tdcells[37].getText()) 
+			AVAIL = float(tdcells[6].getText()) 
 		else:			
 			AVAIL = 0
 		#---------------------------------------
@@ -426,7 +372,7 @@ def getTableContents(table):
 
 		#print TAvailability
 
-	return TProblem, TUtility, TAvailability
+	return TReliability, TUtility, TAvailability
 
 
 
@@ -453,7 +399,7 @@ def getColIndex(table, strSearchKey1, strSearchKey2):
 
 				intColSpan = int(thcells[i]['colspan'])
 
-				print i, intColSpan
+				#print i, intColSpan
 
 				colIndex1 = (i-1) * intColSpan + 1
 
@@ -464,7 +410,7 @@ def getColIndex(table, strSearchKey1, strSearchKey2):
 
 				colIndex1 = (i-1) * intColSpan + 1 
 
-				print i, "rowspan"
+				#print i, "rowspan"
 	#colIndex2 = 0
 	for i in range (1, 2):
 					
@@ -483,8 +429,8 @@ def getColIndex(table, strSearchKey1, strSearchKey2):
 
 
 				
-	print "we got the col index = (", colIndex1, ") from ", numCols-1, "index for search key ='"+strSearchKey1+"'"
-	print "we got the col index = (", colIndex2, ") from ", numCols-1, "index for search key ='"+strSearchKey2+"'"
+	#print "we got the col index = (", colIndex1, ") from ", numCols-1, "index for search key ='"+strSearchKey1+"'"
+	#print "we got the col index = (", colIndex2, ") from ", numCols-1, "index for search key ='"+strSearchKey2+"'"
 	return colIndex2
 
 
@@ -516,50 +462,50 @@ def getRowInterest(table, keyword):
 
 def colorAvail(percentAvail):
 
-	strColor = str(percentAvail)
+	strColor = ""
 
 	if percentAvail >= 0.00:
 		strColor = "merah"
 	if percentAvail > 87.00:
 		strColor = "kuning"
-	if percentAvail > 93.00:
+	if percentAvail > 96.00:
 		strColor = "hijau_muda"
-	if percentAvail > 97.00:
+	if percentAvail > 98.00:
 		strColor = "hijau_tua"
 
 
 	return strColor
 
 
-def colorProblem(PROB):
+def colorRelia(RELIA):
 
-	strColor = str(PROB)
+	strColor = ""
 
-	if PROB == 0.00:
-		strColor = "hijau_tua"
-	if PROB >= 1:
-		strColor = "hijau_muda"
-	if PROB == 3:
-		strColor = "kuning"
-	if PROB > 3:
+	if RELIA >= 0.00:
 		strColor = "merah"
+	if RELIA > 87.00:
+		strColor = "kuning"
+	if RELIA > 96.00:
+		strColor = "hijau_muda"
+	if RELIA > 98.00:
+		strColor = "hijau_tua"
 
 
 	return strColor
 
-def colorUtility(percentTunai):
+def colorUtility(UTILITY):
 
-	strColor = str(percentTunai)
+	strColor = ""
 
-	if percentTunai >= 0.00:
+	if UTILITY >= 0.00:
 		strColor = "merah"
-	if percentTunai >= 80.00:
+	if UTILITY >= 87.00:
 		strColor = "kuning"
-	if percentTunai >= 90.00:
+	if UTILITY >= 96.00:
 		strColor = "hijau_muda"
-	if percentTunai >= 100.00:
+	if UTILITY >= 98.00:
 		strColor = "hijau_tua"
-
+	print "\n\n\n\n",UTILITY, type(UTILITY), strColor
 
 	return strColor
 
@@ -578,16 +524,16 @@ def prepareDirectory(strOutputDir):
 
 		if not os.path.exists(fullPath):
 
-			print "creating directories:", arrDirectoryStructure[i]
+			#print "creating directories:", arrDirectoryStructure[i]
 		    	os.mkdir(fullPath)
 			os.chdir(fullPath)
 
-	print fullPath
+	#print fullPath
 
 	return fullPath
 
 
-def putDataXL(offRow, offCol, TProblem, TUtility, TAvailability):
+def putDataXL(offRow, offCol, TReliability, TUtility, TAvailability):
 
 	book = xlwt.Workbook()
 
@@ -613,12 +559,13 @@ def putDataXL(offRow, offCol, TProblem, TUtility, TAvailability):
 	styleTitle += 'align: vertical center, horizontal center, wrap on;'
 	styleTitle += 'font: name Tahoma, height 280, bold 1;'
 
-	sheet1.write_merge(offRow, offRow, offCol, offCol+21, 'ATM PRO ' + RegionName , xlwt.easyxf(styleTitle))
+	lastCol = 15
+	sheet1.write_merge(offRow, offRow, offCol, lastCol, 'ATM PRO ' + regionName , xlwt.easyxf(styleTitle))
 	shiftDown = 1
 
 	sheet1.row(1).height_mismatch = True
 	sheet1.row(1).height = 360
-	sheet1.write_merge(offRow+shiftDown, offRow+shiftDown, offCol, offCol+21, 'posisi tanggal ' +time.strftime("%d/%m/%Y-%H:%M") , xlwt.easyxf(styleTitle))
+	sheet1.write_merge(offRow+shiftDown, offRow+shiftDown, offCol, lastCol, 'posisi tanggal ' +time.strftime("%d/%m/%Y-%H:%M") , xlwt.easyxf(styleTitle))
 	contentAlignmentHorz = ["center", "right", "center", "center", "center", "center", "center", "center", "center" , "center"]
 
 
@@ -634,7 +581,7 @@ def putDataXL(offRow, offCol, TProblem, TUtility, TAvailability):
 
 	def makeHeader(xRow, yCol, jenisTabel):
 
-		arrJudul = ["CODE", "BRANCH", "NOP", "RSK", "OPS", "OOS", "OFF", "OF6", "POK" , "JML"]
+		arrJudul = ["CODE", "BRANCH", "ATM", "%"]
 
 		sheet1.write_merge(xRow+2*shiftDown, xRow+2*shiftDown, yCol, yCol+len(arrJudul)-1, 'RANKING ' + jenisTabel, xlwt.easyxf(styler('sky_blue_10', 240)))
 
@@ -643,31 +590,25 @@ def putDataXL(offRow, offCol, TProblem, TUtility, TAvailability):
 			sheet1.write(xRow+3*shiftDown , i+yCol, arrJudul[i], xlwt.easyxf(styler('blue_classic', 180)))
 
 
-	# TABULASI RANKING PROBLEM  ----------------------------------------------------
-	makeHeader(offRow, offCol, 'BY PROBLEM')
+	# TABULASI RANKING RELIABILITY  ----------------------------------------------------
+	makeHeader(offRow, offCol, 'BY RELIABILITY')
 	sheet1.col(offCol+0).width = 5*315
 	sheet1.col(offCol+1).width = 22*315
-	sheet1.col(offCol+2).width = 4*315
-	sheet1.col(offCol+3).width = 4*315
-	sheet1.col(offCol+4).width = 4*315
-	sheet1.col(offCol+5).width = 4*315
-	sheet1.col(offCol+6).width = 4*315
-	sheet1.col(offCol+7).width = 4*315
-	sheet1.col(offCol+8).width = 4*315
-	sheet1.col(offCol+9).width = 4*315
-	sheet1.col(offCol+10).width = 6*315
+	sheet1.col(offCol+2).width = 6*315
+	sheet1.col(offCol+3).width = 8*315
 
-	for i in range (0, len(TProblem)):
-		#print len(TProblem[i])
-		for j in range(0,len(TProblem[i])):
 
-			strColor = colorProblem(TProblem[i][9])
+	for i in range (0, len(TReliability)):
+		#print len(TReliability[i])
+		for j in range(0,len(TReliability[i])):
+
+			strColor = colorRelia(TReliability[i][3])
 			contentStyle = 'font: name Tahoma, height 180;'
 			contentStyle += 'pattern: pattern solid, fore_colour '+strColor+';'
 			contentStyle += 'align: horiz '+contentAlignmentHorz[j]
 			style = xlwt.easyxf(contentStyle)
 
-			cellContent = TProblem[i][j]
+			cellContent = TReliability[i][j]
 			if cellContent	== 0:
 				cellContent = '-'
 
@@ -675,7 +616,7 @@ def putDataXL(offRow, offCol, TProblem, TUtility, TAvailability):
 
 	# UTILITY ----------------------------------------------------
 
-	shiftLeft = 11
+	shiftLeft = (4) + 1
 
 	def makeHeader2(xRow, yCol, jenisTabel):
 
@@ -696,8 +637,9 @@ def putDataXL(offRow, offCol, TProblem, TUtility, TAvailability):
 	sheet1.col(offCol+shiftLeft+2).width = 6*315
 	sheet1.col(offCol+shiftLeft+3).width = 6*315
 	sheet1.col(offCol+shiftLeft+4).width = 6*315
-	sheet1.col(offCol+shiftLeft+5).width = 6*315
-	sheet1.col(offCol+shiftLeft+6).width = 6*315
+	sheet1.col(offCol+shiftLeft+5).width = 7*315
+
+
 
 	for k in range (0, len(TUtility)):
 
@@ -717,7 +659,7 @@ def putDataXL(offRow, offCol, TProblem, TUtility, TAvailability):
 
 	# AVAILABILITY ----------------------------------------------------
 
-	shiftLeft = 18
+	shiftLeft = (4) + 1 + (6) + 1
 
 	def makeHeader3(xRow, yCol, jenisTabel):
 
@@ -732,7 +674,7 @@ def putDataXL(offRow, offCol, TProblem, TUtility, TAvailability):
 
 
 	makeHeader3(offRow, offCol+shiftLeft, "BY AVAILABILITY")
-	print TAvailability
+	#print TAvailability
 	sheet1.col(offCol+shiftLeft-1).width = 2*315
 	sheet1.col(offCol+shiftLeft+0).width = 5*315
 	sheet1.col(offCol+shiftLeft+1).width = 22*315
@@ -754,43 +696,41 @@ def putDataXL(offRow, offCol, TProblem, TUtility, TAvailability):
 
 	style = xlwt.easyxf(styler('sky_blue_10', 240))
 	#TOTAL 1
-	sheet1.write(40, 0, '', style)	
-	sheet1.write(40, 1, 'TOTAL PROBLEM', style)
-	sheet1.write(40, 2, Formula("SUM(C5:C40)"), style)	
-	sheet1.write(40, 3, Formula("SUM(D5:D40)"), style)	
-	sheet1.write(40, 4, Formula("SUM(E5:E40)"), style)	
-	sheet1.write(40, 5, Formula("SUM(F5:F40)"), style)	
-	sheet1.write(40, 6, Formula("SUM(G5:G40)"), style)	
-	sheet1.write(40, 7, Formula("SUM(H5:H40)"), style)
-	sheet1.write(40, 8, Formula("SUM(I5:I40)"), style)
-	sheet1.write(40, 9, Formula("SUM(J5:J40)"), style)	
+	sheet1.write(jumlahKanca+4, 0, '', style)	
+	sheet1.write(jumlahKanca+4, 1, 'RELIABILITY', style)
+	sheet1.write(jumlahKanca+4, 2, Formula("SUM(C5:C"+str(jumlahKanca+4)+")"), style)	
+	sheet1.write(jumlahKanca+4, 3, Formula("SUM(D5:D"+str(jumlahKanca+4)+")"), style)	
 	#TOTAL 2
-	sheet1.write(40, 11, '', style)	
-	sheet1.write(40, 12, 'TOTAL', style)	
-	sheet1.write(40, 13, Formula("SUM(N5:N40)"), style)	
-	sheet1.write(40, 14, Formula("SUM(O5:O40)"), style)	
-	sheet1.write(40, 15, Formula("SUM(P5:P40)"), style)	
-	sheet1.write(40, 16, Formula("O41/N41*100"), style)	
+	sheet1.write(jumlahKanca+4, 5, '', style)	
+	sheet1.write(jumlahKanca+4, 6, 'UTILITY', style)	
+	sheet1.write(jumlahKanca+4, 7, Formula("SUM(H5:H"+str(jumlahKanca+4)+")"), style)	
+	sheet1.write(jumlahKanca+4, 8, Formula("SUM(I5:I"+str(jumlahKanca+4)+")"), style)	
+	sheet1.write(jumlahKanca+4, 9, Formula("SUM(J5:J"+str(jumlahKanca+4)+")"), style)	
+	sheet1.write(jumlahKanca+4, 10, Formula("I"+str(jumlahKanca+5)+"/H"+str(jumlahKanca+5)+"*100"), style)	
 	#TOTAL 2
-	sheet1.write(40, 18, '', style)
-	sheet1.write(40, 19, 'TOTAL', style)	
-	sheet1.write(40, 20, Formula("SUM(U5:U40)"), style)	
-	sheet1.write(40, 21, Formula("U41"), style)	
+	sheet1.write(jumlahKanca+4, 12, '', style)
+	sheet1.write(jumlahKanca+4, 13, 'AVAILABILITY', style)	
+	sheet1.write(jumlahKanca+4, 14, Formula("SUM(O5:O"+str(jumlahKanca+4)+")"), style)	
 
+	lastRow = jumlahKanca+5
 
-	for i in range(5, 41):
+	for i in range(5, lastRow):
 
-		strFormula = "PRODUCT(U" + str(i)+ ":V"+str(i)+")"
-		sheet1.write(i-1, 22, Formula(strFormula), xlwt.easyxf('font: color white;'))
+		strFormula = "PRODUCT(C" + str(i)+ ":D"+str(i)+")"
+		sheet1.write(i-1, 4, Formula(strFormula), xlwt.easyxf('font: color white;'))
+
+		strFormula = "PRODUCT(O" + str(i)+ ":P"+str(i)+")"
+		sheet1.write(i-1, 16, Formula(strFormula), xlwt.easyxf('font: color white;'))
 
 	style = xlwt.easyxf(styler('sky_blue_10', 240), num_format_str= '0.00')
-	sheet1.write(40, 21, Formula("SUM(W5:W40)/U41"), style )
+	sheet1.write(jumlahKanca+4, 3, Formula("SUM(E5:E"+str(jumlahKanca+4)+")/C"+str(jumlahKanca+5)+""), style )
+	sheet1.write(jumlahKanca+4, 15, Formula("SUM(Q5:Q"+str(jumlahKanca+4)+")/O"+str(jumlahKanca+5)+""), style )
 
-	lastRow = 41
 
-	sheet1.write_merge(lastRow, lastRow, offCol, offCol+21, 'TARGET UTILITY & AVAILABILITY = 99%' , xlwt.easyxf(styleTitle + 'borders: top thin, bottom thin;'))
 
-	namaFileXLS = prepareDirectory("OUTPUT") + "ATM ALL-" + RegionName +time.strftime("-%Y%m%d-%H")+'.xls'
+	sheet1.write_merge(lastRow, lastRow, offCol, offCol+15, 'TARGET UTILITY & AVAILABILITY = 99%' , xlwt.easyxf(styleTitle + 'borders: top thin, bottom thin;'))
+
+	namaFileXLS = prepareDirectory("OUTPUT") + "ATM ALL-" + regionName +time.strftime("-%Y%m%d-%H")+'.xls'
 
 	book.save(namaFileXLS)
 
@@ -799,10 +739,10 @@ def putDataXL(offRow, offCol, TProblem, TUtility, TAvailability):
 def main():
 
 
-	alamatURL = 'http://atmpro.bri.co.id/statusatm/dashboard_cabang.pl?REGID=15&REGNAME=Jakarta%20III'
+	alamatURL = 'http://atmpro.bri.co.id/statusatm/dashboard_cabang.pl?REGID='+regionID+'&REGNAME='+regionName
 	strHTML = fetchHTML(alamatURL)
 	table = getLargestTable(getTableList(strHTML))
-	TProblem, TUtility, TAvailability = getTableContents(table)
-	putDataXL(0, 0, TProblem, TUtility, TAvailability)
+	TReliability, TUtility, TAvailability = getTableContents(table)
+	putDataXL(0, 0, TReliability, TUtility, TAvailability)
 
 main()
