@@ -1,11 +1,11 @@
 #!/usr/bin/python
 #---------------------------------------
-# ATMRankByRUA.py
+# ATMAll.py
 # (c) Jansen A. Simanullang, 01.08.2016
 # @BSD CITY: 11.08.2016 15:38
 # @Medan City: 29.06.2017
 #---------------------------------------
-# usage: python ATMRankByRUA.py
+# usage: python ATMAll.py
 #---------------------------------------
 from BeautifulSoup import BeautifulSoup
 import os, requests, time, urlparse, sys
@@ -733,7 +733,7 @@ def putDataXL(offRow, offCol, TReliability, TUtility, TAvailability):
 	namaFileXLS = prepareDirectory("OUTPUT") + "ATM ALL-" + regionName +time.strftime("-%Y%m%d-%H")+'.xls'
 
 	book.save(namaFileXLS)
-	os.system('libreoffice '+namaFileXLS)
+	os.system('libreoffice '+namaFileXLS.replace(" ","\ "))
 
 
 	
