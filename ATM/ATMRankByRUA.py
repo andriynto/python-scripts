@@ -505,7 +505,6 @@ def colorUtility(UTILITY):
 		strColor = "hijau_muda"
 	if UTILITY >= 98.00:
 		strColor = "hijau_tua"
-	print "\n\n\n\n",UTILITY, type(UTILITY), strColor
 
 	return strColor
 
