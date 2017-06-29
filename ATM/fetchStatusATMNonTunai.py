@@ -340,7 +340,7 @@ def getTNonTunaiCabang(TNonTunai, branchCode):
 
 	for i in range(0, len(TNonTunai)):
 		if TNonTunai[i][0] == branchCode.zfill(4):
-			strNamaCabang = cleanupNamaUker(TNonTunai[i][-1])
+			strNamaCabang = cleanupNamaUker(TNonTunai[i][6])
 			TNonTunaiKanca.append(TNonTunai[i])
 
 	for i in range(0, len(TNonTunaiKanca)):
@@ -390,6 +390,7 @@ def getTNonTunaiCRO(TNonTunai, selectedCRO):
 				strNamaCabang = cleanupNamaUker(TNonTunai[i][-1])
 				TNonTunaiCRO.append((TNonTunai[i][1], TNonTunai[i][4], TNonTunai[i][5], TNonTunai[i][7]))
 
+
 	elif selectedCRO in arrCRO:
 
 		arrCRO = [""]
@@ -405,6 +406,7 @@ def getTNonTunaiCRO(TNonTunai, selectedCRO):
 	if TNonTunaiCRO:
 
 		msgBody += strCRO+"\n"
+		TNonTunaiCRO = sorted(TNonTunaiCRO, key=itemgetter(0,3), reverse = False)
 		for i in range(0, len(TNonTunaiCRO)):
 
 			if TNonTunaiCRO[i-1][0] != TNonTunaiCRO[i][0]:
@@ -416,7 +418,8 @@ def getTNonTunaiCRO(TNonTunai, selectedCRO):
 				if str(TNonTunaiCRO[i][0]) == arrCRO[j]:
 					seqNo += 1
 					counter += 1
-					msgBody += str(seqNo)+") "+ str(TNonTunaiCRO[i][1])+", "+str(TNonTunaiCRO[i][2])+", "+str(TNonTunaiCRO[i][3]).replace("_"," ")+"\n"
+					msgBody += str(seqNo)+") "+ str(TNonTunaiCRO[i][1])+", "+str(TNonTunaiCRO[i][2])+", "+durasiLastTunai(str(TNonTunaiCRO[i][3]))+"\n"
+
 
 		msgBody += "\n"+regionName + "-[TOTAL NONTUNAI CRO "+selectedCRO+"]: "+str(counter)
 
@@ -449,27 +452,31 @@ def getTNonTunaiUKO(TNonTunai):
 
 			seqNo += 1
 			counter += 1
-			msgBody += str(seqNo)+") "+ str(TNonTunaiUKO[i][1])+", "+str(TNonTunaiUKO[i][2])+", "+durasiHinggaKini(str(TNonTunaiUKO[i][3]).replace("_"," "))+"\n"
+			msgBody += str(seqNo)+") "+ str(TNonTunaiUKO[i][1])+", "+str(TNonTunaiUKO[i][2])+", "+durasiLastTunai(str(TNonTunaiUKO[i][3]).replace("_"," "))+"\n"
 
 		msgBody += "\n"+regionName + "-[TOTAL NONTUNAI UKO]: "+str(counter)
 
 	return 	msgBody
 
-def durasiHinggaKini(strDate):
+def durasiLastTunai(strDate):
 
 	from datetime import datetime
 	strDate = strDate.replace('_',' ')
 
-	if "-" in strDate:
+	if strDate:
+		if "-" in strDate:
 
-		format1 = '%Y-%m-%d %H:%M:%S'
+			format1 = '%Y-%m-%d %H:%M:%S'
 
-	elif "/" in strDate:
+		elif "/" in strDate:
 
-		format1 = '%d/%m/%Y %H:%M'
+			format1 = '%d/%m/%Y %H:%M'
 
-	span = datetime.now() - datetime.strptime(strDate, format1)
-	return ':'.join(str(span).split('.')[:1]).replace('days','hari')
+		span = datetime.now() - datetime.strptime(strDate, format1)
+		strResult = ':'.join(str(span).split('.')[:1]).replace('days','hari').replace('day','hari')
+	else:
+		strResult = "0"
+	return strResult
 
 def cleanUpNamaCRO(strText):
 
@@ -521,7 +528,7 @@ def cleanUpLocation(strLocation):
 
 msgBody =""
 
-timestamp = "*\nper "+ time.strftime("%d-%m-%Y pukul %H:%M")
+timestamp = "\nper "+ time.strftime("%d-%m-%Y pukul %H:%M")
 
 if len(sys.argv) > 0:
 
@@ -549,8 +556,8 @@ if len(sys.argv) > 0:
 					msgBody = getTNonTunaiUKO(TNonTunai)
 
 					if msgBody:	
-						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
-						print msgBody
+						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + "* - "+regionName+ timestamp+ strHeaderLine + msgBody
+						print msgBody.replace("**","").replace("MEDAN ","").replace("MDN ","").replace("UNIT ","U ")
 
 				except:
 					print "Ada kesalahan."
@@ -563,8 +570,8 @@ if len(sys.argv) > 0:
 					msgBody = getTNonTunaiCRO(TNonTunai, 0)
 
 					if msgBody:	
-						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
-						print msgBody
+						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + "* - "+regionName+ timestamp+ strHeaderLine + msgBody
+						print msgBody.replace("MEDAN ","").replace("MDN ","")
 
 				except:
 					print "Ada kesalahan."
