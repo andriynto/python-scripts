@@ -53,6 +53,22 @@ def cleanUpHTML(strHTML):
 	return strHTML
 
 
+def getStyleList(strHTML):
+
+	#print "\ngetting Style List...\n"
+
+	mysoup = BeautifulSoup(strHTML)
+
+	arrStyle = mysoup.findAll('link', rel = "stylesheet" )
+
+	strStyle = ""
+
+	for i in range (0, len(arrStyle)):
+
+		strStyle = strStyle + str(arrStyle[i])
+	
+	return strStyle
+
 
 def getTableList(strHTML):
 
@@ -184,6 +200,23 @@ def getRowsHeadNumber(table):
 	return numRowsHead
 
 
+def getNumRowsFoot(table):
+
+	# bagaimana cara menentukan berapa jumlah baris yang terpakai sebagai footer?
+
+	soup = BeautifulSoup(str(table))
+	foot = soup.findAll('tfoot')
+
+	numRowsFoot = 0
+
+	for i in range (0, len(foot)):
+
+		numRowsFoot += len(foot[i].findAll('tr'))
+
+	#print "there is", len(foot), "footer with", numRowsFoot, "rows"
+		
+	return numRowsFoot
+
 
 def getTableDimension(table):
 	
@@ -209,6 +242,19 @@ def getTableHeader(table):
 		strHTMLTableHeader = strHTMLTableHeader + str(rows[i])
 	
 	return strHTMLTableHeader
+
+
+
+def getRowInterest(table, keyword):
+
+	strHTMLTableRows = getSpecificRow(table, getRowIndex(table, keyword))
+	
+	mysoup = BeautifulSoup(strHTMLTableRows)
+
+	arrTDs = mysoup.findAll('td')
+
+	return arrTDs[1].getText()
+
 
 
 
@@ -268,7 +314,6 @@ def getRowIndex(table, strSearchKey):
 				rowIndex = i
 
 				#print "we got the index = ", rowIndex, "from ", numRows, "for search key ='"+strSearchKey+"'"
-	return rowIndex
 	return rowIndex
 
 
