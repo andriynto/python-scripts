@@ -387,3 +387,51 @@ def cleanUpLocation(strLocation):
 	strLocation = strLocation.strip()
 
 	return strLocation
+
+def colorAvail(percentAvail):
+
+	strColor = ""
+
+	if percentAvail >= 0.00:
+		strColor = "merah"
+	if percentAvail > 87.00:
+		strColor = "kuning"
+	if percentAvail > 96.00:
+		strColor = "hijau_muda"
+	if percentAvail > 98.00:
+		strColor = "hijau_tua"
+
+
+	return strColor
+
+
+def colorRelia(RELIA):
+
+	strColor = ""
+
+	if RELIA >= 0.00:
+		strColor = "merah"
+	if RELIA > 87.00:
+		strColor = "kuning"
+	if RELIA > 96.00:
+		strColor = "hijau_muda"
+	if RELIA > 98.00:
+		strColor = "hijau_tua"
+
+
+	return strColor
+
+def colorUtility(UTILITY):
+
+	strColor = ""
+
+	if UTILITY >= 0.00:
+		strColor = "merah"
+	if UTILITY >= 87.00:
+		strColor = "kuning"
+	if UTILITY >= 96.00:
+		strColor = "hijau_muda"
+	if UTILITY >= 98.00:
+		strColor = "hijau_tua"
+
+	return strColor
