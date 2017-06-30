@@ -587,7 +587,7 @@ if len(sys.argv) > 0:
 					msgBody = getTNonTunaiCRO(TNonTunai, AREAID.upper())
 
 					if msgBody:	
-						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + " - "+regionName+ timestamp+ strHeaderLine + msgBody
+						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + "* - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
 
 				except:
