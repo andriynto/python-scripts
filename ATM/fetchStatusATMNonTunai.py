@@ -5,7 +5,7 @@
 # @BSD City: 14 Januari 2016 09:04:11
 # 13 Agustus 2016 13:58:28 - 15:30, 16:33
 # 28 November 2016 14:36 # asterisks added
-# @Medan City: 24.06.2017
+# @Medan City: 30.06.2017
 # to be used with telegram-bot plugin
 #---------------------------------------
 # usage: fetchStatusATMNonTunai cro/uko/kode cabang
@@ -21,7 +21,7 @@ scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
 from loadConfig import readConfig
 regionID = readConfig("Atmpro")['regionid']
 regionName = readConfig("Atmpro")['regionname']
-strHeaderLine = "\n----------------------------------------------\n"
+strHeaderLine = "\n---------------------------------\n"
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 def fetchHTML(alamatURL):
