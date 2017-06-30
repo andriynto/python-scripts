@@ -1,24 +1,24 @@
 #!/usr/bin/python
 #---------------------------------------
-# ATMAll.py
+# ATMRankByRUA.py
 # (c) Jansen A. Simanullang, 01.08.2016
 # @BSD CITY: 11.08.2016 15:38
-# @Medan City: 29.06.2017
+# @Medan City: 30.06.2017
 #---------------------------------------
-# usage: python ATMAll.py
+# usage: python ATMRankByRUA.py
 #---------------------------------------
 from BeautifulSoup import BeautifulSoup
-import os, requests, time, urlparse, sys
-import urllib2, pdfkit, xlwt, xlutils
+import os, time, sys
+import urllib2, xlwt, xlutils
 from operator import itemgetter
 from xlwt import *
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
 from loadConfig import readConfig
+from helperlibrary import *
 regionID = readConfig("Atmpro")['regionid']
 regionName = readConfig("Atmpro")['regionname']
-jumlahKanca=24
-strHeaderLine = "\n----------------------------------------------\n"
+jumlahKanca = int(readConfig("Atmpro")['jumlahkanca'])
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #---------------------------------------
 scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + os.sep
@@ -33,220 +33,14 @@ def welcomeScreen():
 	#print "TABULAR ATM RELIABILITY, UTILITY & AVAILABILITY \n\n\n"
 
 
-def fetchHTML(alamatURL):
 
-	#print "fetching HTML from URL...\n", alamatURL
-	strHTML = urllib2.urlopen(urllib2.Request(alamatURL, headers={ 'User-Agent': 'Mozilla/5.0' })).read()
-	strHTML = strHTML.decode("windows-1252")
-
-	strHTML = strHTML.encode('ascii', 'ignore')
-	mysoup = BeautifulSoup(strHTML)
-	
-	#print ">> URL fetched."
-
-	return strHTML
-
-
-
-def getStyleList(strHTML):
-
-	#print "\ngetting Style List...\n"
-
-	mysoup = BeautifulSoup(strHTML)
-
-	arrStyle = mysoup.findAll('link', rel = "stylesheet" )
-
-	strStyle = ""
-
-	for i in range (0, len(arrStyle)):
-
-		strStyle = strStyle + str(arrStyle[i])
-	
-	return strStyle
-
-
-
-def getTableList(strHTML):
-
-	#print "\ngetting Table List...\n"
-
-	mysoup = BeautifulSoup(strHTML)
-
-	arrTable = mysoup.findAll('table')
-
-	#print "there are:", len(arrTable), "tables."
-	
-	return arrTable
-
-
-
-def getLargestTable(arrTable):
-
-	largest_table = None
-
-	max_rows = 0
-
-	for table in arrTable:
-
-		# cek satu per satu jumlah baris yang ada pada masing-masing tabel dalam array kumpulan tabel
-		# simpan dalam variabel bernama numRows
-
-		numRows = len(table.findAll(lambda tag: tag.name == 'tr' and tag.findParent('table') == table))
-		
-		# jika jumlah baris pada suatu tabel lebih besar daripada '0' maka jadikan sebagai max_rows sementara
-		# proses ini diulangi terus menerus maka max_rows akan berisi jumlah baris terbanyak
-
-		if numRows > max_rows:
-			
-		        largest_table = table
-			max_rows = numRows
-
-	# ini hanya mengembalikan penyebutan 'tabel terbesar' hanya sebagai 'tabel'
-
-	table = largest_table
-
-	#if table:
-	#	print ">> the largest from table list is chosen."
-
-	return table
-
-
-
-def getNumCols(table):
-
-	# bagaimana cara menentukan berapa jumlah kolomnya?
-
-	soup = BeautifulSoup(str(table))
-
-	numCols = len(soup.findAll('tbody')[0].findAll('tr')[0].findAll('td'))
-
-	#print "number of columns is", numCols
-
-	return numCols
-
-
-
-def getNumRows(table):
-
-	# bagaimana cara menentukan berapa jumlah kolomnya?
-
-	numRows = len(table.findAll(lambda tag: tag.name == 'tr' and tag.findParent('table') == table))
-	
-	return numRows
-
-
-
-def getNumRowsHead(table):
-
-	# bagaimana cara menentukan berapa jumlah baris yang terpakai sebagai header?
-
-	soup = BeautifulSoup(str(table))
-	head = soup.findAll('thead')
-
-	numRowsHead = 0
-
-	for i in range (0, len(head)):
-
-		numRowsHead += len(head[i].findAll('tr'))
-
-	#print "there is", len(head), "header with", numRowsHead, "rows"
-		
-	return numRowsHead
-
-
-
-def getNumRowsFoot(table):
-
-	# bagaimana cara menentukan berapa jumlah baris yang terpakai sebagai footer?
-
-	soup = BeautifulSoup(str(table))
-	foot = soup.findAll('tfoot')
-
-	numRowsFoot = 0
-
-	for i in range (0, len(foot)):
-
-		numRowsFoot += len(foot[i].findAll('tr'))
-
-	#print "there is", len(foot), "footer with", numRowsFoot, "rows"
-		
-	return numRowsFoot
-
-
-
-def getTableDimension(table):
-	
-	numRows = getNumRows(table)
-	numRowsHead = getNumRowsHead(table)
-	numCols = getNumCols(table)
-	
-	return numRows, numRowsHead, numCols
-
-
-
-def getSpecificRow(table, rowIndex):
-
-	#print "Let's take a look at the specific rows of index", rowIndex
-
-	soup = BeautifulSoup(str(table))
-	rows = soup.findAll('tr')
-	strHTMLTableRows = ""
-
-	for i in range (rowIndex, rowIndex+1):
-
-		strHTMLTableRows = str(rows[i])
-	
-	return strHTMLTableRows
-
-
-
-def getRowIndex(table, strSearchKey):
-
-	# fungsi ini untuk mendapatkan nomor indeks baris yang mengandung satu kata kunci
-
-	soup = BeautifulSoup(str(table))
-	rows = soup.findAll('tr')
-	
-	numRows = len(table.findAll(lambda tag: tag.name == 'tr' and tag.findParent('table') == table))
-
-	rowIndex = 0
-
-	for i in range (0, numRows):
-
-		trs = BeautifulSoup(str(rows[i]))
-		tdcells = trs.findAll("td")
-			
-		for j in range (0, len(tdcells)):
-
-			if tdcells[j].getText().upper() == strSearchKey.upper():
-				
-				rowIndex = i
-
-				#print "we got the index = ", rowIndex, "from ", numRows, "for search key ='"+strSearchKey+"'"
-	return rowIndex
-
-
-
-def getSpecificRows(table, rowIndex):
-
-	print "Let's take a look at the specific rows of index", rowIndex
-
-	soup = BeautifulSoup(str(table))
-	rows = soup.findAll('tr')
-	strHTMLTableRows = ""
-
-	for i in range (rowIndex, rowIndex+1):
-
-		strHTMLTableRows = str(rows[i])
-	
-	return strHTMLTableRows
 
 
 
 def getTableContents(table):
 
-	numRows = getNumRows(table)
-	numRowsHead = getNumRowsHead(table)
+	numRows = getRowsNumber(table)
+	numRowsHead = getRowsHeadNumber(table)
 
 	soup = BeautifulSoup(str(table))
 	rows = soup.findAll('tr')
@@ -381,7 +175,7 @@ def getColIndex(table, strSearchKey1, strSearchKey2):
 	# fungsi ini untuk mendapatkan nomor indeks kolom yang mengandung satu kata kunci
 
 	numCols = getNumCols(table)
-	numRowsHead = getNumRowsHead(table)
+	numRowsHead = getRowsHeadNumber(table)
 
 	soup = BeautifulSoup(str(table))
 	rows = soup.findAll('tr')
@@ -435,78 +229,6 @@ def getColIndex(table, strSearchKey1, strSearchKey2):
 
 
 
-def cleanupNamaUker(namaUker):
-
-
-	namaUker = namaUker.replace("JAKARTA ","")
-	namaUker = namaUker.replace("Jakarta ","")
-	namaUker = namaUker.replace("JKT ","")
-	namaUker = namaUker.replace("KANCA ","")
-	namaUker = namaUker.replace("KC ","")
-
-	return namaUker.strip()
-
-
-
-
-def getRowInterest(table, keyword):
-
-	strHTMLTableRows = getSpecificRow(table, getRowIndex(table, keyword))
-	
-	mysoup = BeautifulSoup(strHTMLTableRows)
-
-	arrTDs = mysoup.findAll('td')
-
-	return arrTDs[1].getText()
-
-
-def colorAvail(percentAvail):
-
-	strColor = ""
-
-	if percentAvail >= 0.00:
-		strColor = "merah"
-	if percentAvail > 87.00:
-		strColor = "kuning"
-	if percentAvail > 96.00:
-		strColor = "hijau_muda"
-	if percentAvail > 98.00:
-		strColor = "hijau_tua"
-
-
-	return strColor
-
-
-def colorRelia(RELIA):
-
-	strColor = ""
-
-	if RELIA >= 0.00:
-		strColor = "merah"
-	if RELIA > 87.00:
-		strColor = "kuning"
-	if RELIA > 96.00:
-		strColor = "hijau_muda"
-	if RELIA > 98.00:
-		strColor = "hijau_tua"
-
-
-	return strColor
-
-def colorUtility(UTILITY):
-
-	strColor = ""
-
-	if UTILITY >= 0.00:
-		strColor = "merah"
-	if UTILITY >= 87.00:
-		strColor = "kuning"
-	if UTILITY >= 96.00:
-		strColor = "hijau_muda"
-	if UTILITY >= 98.00:
-		strColor = "hijau_tua"
-
-	return strColor
 
 
 def prepareDirectory(strOutputDir):
@@ -552,6 +274,10 @@ def putDataXL(offRow, offCol, TReliability, TUtility, TAvailability):
 
 
 	sheet1 = book.add_sheet('PERINGKAT ATM', cell_overwrite_ok = True)
+	sheet1.set_portrait(False)
+	sheet1.fit_num_pages=1
+	sheet1.paper_size_code = 1
+
 	sheet1.row(0).height_mismatch = True
 	sheet1.row(0).height = 360
 	styleTitle = 'pattern: pattern solid, fore_colour white;'
