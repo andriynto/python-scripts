@@ -21,7 +21,7 @@ scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
 from loadConfig import readConfig
 regionID = readConfig("Atmpro")['regionid'].upper()
 regionName = readConfig("Atmpro")['regionname']
-strHeaderLine = "\n*----------------------------------------------*\n"
+strHeaderLine = "\n---------------------------------\n"
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 def fetchHTML(alamatURL):
