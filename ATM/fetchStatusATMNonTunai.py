@@ -20,10 +20,16 @@ from operator import itemgetter
 scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
 from loadConfig import readConfig
 from helperlibrary import *
+atmproIP = readConfig("Atmpro")['ipaddress']
 regionID = readConfig("Atmpro")['regionid']
 regionName = readConfig("Atmpro")['regionname']
+secretKey = readConfig("Telegram")['token']
+Telebot = readConfig("Telegram")['username']
+textLimit = int(readConfig("Telegram")['textlimit'])
+behindProxy=int(readConfig("Internet")['behindproxy'])
 strHeaderLine = "\n----------------------------------------------\n"
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 
 
 def getTNonTunai(table):
@@ -215,6 +221,10 @@ if len(sys.argv) > 0:
 
 	try:
 		AREAID = sys.argv[1]
+		try:
+			telegram_id = sys.argv[2]
+		except:
+			telegram_id = ""
 
 		if AREAID.isdigit():
 
@@ -223,6 +233,8 @@ if len(sys.argv) > 0:
 
 			if msgBody:	
 				print msgBody
+				if telegram_id:
+					TelegramTextSender(telegram_id, msgBody)
 
 	
 		if AREAID[0].isalpha():
@@ -238,6 +250,9 @@ if len(sys.argv) > 0:
 						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + "* - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody.replace("**","") # double asterisk mark ("**") due to orphaned TID
 
+						if telegram_id:
+							TelegramTextSender(telegram_id, msgBody)
+
 				except:
 					print "Ada kesalahan."
 
@@ -251,6 +266,8 @@ if len(sys.argv) > 0:
 					if msgBody:	
 						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + "* - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
+						if telegram_id:
+							TelegramTextSender(telegram_id, msgBody)
 
 				except:
 					print "Ada kesalahan."
@@ -265,6 +282,8 @@ if len(sys.argv) > 0:
 					if msgBody:	
 						msgBody = strHeaderLine +"*ATM NON TUNAI "+ AREAID.upper() + "* - "+regionName+ timestamp+ strHeaderLine + msgBody
 						print msgBody
+						if telegram_id:
+							TelegramTextSender(telegram_id, msgBody)
 
 				except:
 					print "CRO tidak dikenal."
