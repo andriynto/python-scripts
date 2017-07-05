@@ -3,7 +3,7 @@
 #---------------------------------------
 # helperlibrary.py
 # (c) Jansen A. Simanullang
-# @Medan City, Juni 2017
+# @Medan City, Juni-Juli 2017
 #---------------------------------------
 # Python usage:
 #
@@ -14,7 +14,21 @@
 #-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 from BeautifulSoup import BeautifulSoup
 import os, sys, time
-import urllib2
+import urllib, urllib2, requests
+
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+scriptDirectory = os.path.dirname(os.path.abspath(__file__)) + "/"
+from loadConfig import readConfig
+from helperlibrary import *
+atmproIP = readConfig("Atmpro")['ipaddress']
+regionID = readConfig("Atmpro")['regionid']
+regionName = readConfig("Atmpro")['regionname']
+secretKey = readConfig("Telegram")['token']
+Telebot = readConfig("Telegram")['username']
+textLimit = int(readConfig("Telegram")['textlimit'])
+behindProxy=int(readConfig("Internet")['behindproxy'])
+strHeaderLine = "\n----------------------------------------------\n"
+#-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 def fetchHTML(alamatURL):
 	# fungsi ini hanya untuk mengambil stream string HTML dari alamat URL yang akan dimonitor
@@ -337,8 +351,6 @@ def durasiLastTunai(strDate):
 		strResult = "0"
 	return strResult
 
-
-
 def cleanUpNamaCRO(strText):
 
 	strText = strText.replace("ATM CENTER","")
@@ -353,19 +365,37 @@ def cleanUpNamaCRO(strText):
 	strText = strText.replace("9842-BG","BG")
 	strText = strText.replace("9831-VENDOR CRO SSI MEDAN","SSI")
 	strText = strText.replace("9849-VENDOR CRO III KEJAR MEDAN","KEJAR")
+	strText = strText.replace("[","")
+
+	if "BG" in strText:
+		strText = strText.replace(strText, "BG")
+
+	if "KEJAR" in strText:
+		strText = strText.replace(strText, "KEJAR")
+
+	if "SSI" in strText:
+		strText = strText.replace(strText, "SSI")
+
+	if "TAG" in strText:
+		strText = strText.replace(strText, "TAG")
+
+	if "G4S" in strText:
+		strText = strText.replace(strText, "G4S")
 
 	return strText.strip()
+
 
 def cleanupNamaUker(namaUker):
 
 
-	namaUker = namaUker.replace("JAKARTA ","")
-	namaUker = namaUker.replace("Jakarta ","")
+	namaUker = namaUker.replace("JAKARTA","")
+	namaUker = namaUker.replace("Jakarta ","") 
 	namaUker = namaUker.replace("JKT ","")
 	namaUker = namaUker.replace("KANCA ","")
 	namaUker = namaUker.replace("KC ","")
 
 	return namaUker.strip()
+
 
 def cleanUpLocation(strLocation):
 
@@ -384,9 +414,11 @@ def cleanUpLocation(strLocation):
 	strLocation = strLocation.replace("MEDAN ","")
 	strLocation = strLocation.replace("MDN ","")
 	strLocation = strLocation.replace("UNIT ","U ")
+	strLocation = strLocation.replace("[","")
 	strLocation = strLocation.strip()
 
 	return strLocation
+
 
 def colorAvail(percentAvail):
 
@@ -435,3 +467,34 @@ def colorUtility(UTILITY):
 		strColor = "hijau_tua"
 
 	return strColor
+
+def TelegramBotSender(chat_id, strText):
+
+	encText=urllib.quote_plus(strText)
+
+	strURL = "https://api.telegram.org/bot"+secretKey+"/sendMessage?parse_mode=Markdown&chat_id="+chat_id+"&text="+urllib.quote_plus(strText)
+
+	if behindProxy:
+
+		os.system('proxychains w3m -dump "'+ strURL+'"')
+	else:
+		os.system('w3m -dump "'+ strURL+'"')
+
+
+def TelegramTextSender(telegram_id, strText):
+	#fungsi ini untuk mengatasi batasan telegram text 4096 karakter
+
+	strText = strText.replace("**","")
+
+	if len(strText) <= textLimit:
+
+		TelegramBotSender(telegram_id, strText)
+	else:
+		step = textLimit
+		
+		for i in range(0, len(strText), textLimit):
+
+			slice = strText[i:step]
+			TelegramBotSender(telegram_id, slice)
+			print slice
+			step += textLimit
