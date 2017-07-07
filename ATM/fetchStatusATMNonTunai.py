@@ -5,11 +5,15 @@
 # @BSD City: 14 Januari 2016 09:04:11
 # 13 Agustus 2016 13:58:28 - 15:30, 16:33
 # 28 November 2016 14:36 # asterisks added
-# @Medan City: 30.06.2017
+# @Medan City: June - July 2017
 # to be used with telegram-bot plugin
 #---------------------------------------
-# usage: fetchStatusATMNonTunai cro/uko/kode cabang
+# usage #1: 
+# fetchStatusATMNonTunai cro/uko/kode cabang
 # script name followed by cro/uko or branchCode
+# usage #2: fetchStatusATMNonTunai [cro/uko/kode cabang] [telegram_id]
+# to send to telegram id directly
+
 #---------------------------------------
 
 from BeautifulSoup import BeautifulSoup
@@ -224,6 +228,7 @@ if len(sys.argv) > 0:
 		try:
 			telegram_id = sys.argv[2]
 		except:
+			AREAID = sys.argv[1]
 			telegram_id = ""
 
 		if AREAID.isdigit():
